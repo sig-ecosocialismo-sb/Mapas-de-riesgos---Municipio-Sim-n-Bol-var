@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover">
     <title>SIG Ecosocial - Municipio Simón Bolívar</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -15,7 +16,18 @@
         }
 
         * { box-sizing: border-box; }
-        body, html { margin: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            font-family: 'Segoe UI', sans-serif;
+            background: #000;
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
+        }
 
         #pantalla-registro {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -98,10 +110,25 @@
             margin-top: 5px; width: auto; align-self: flex-end;
         }
 
-        #sistema-principal { display: none; width: 100vw; height: 100vh; flex-direction: column; background: #111; color: white; }
+        #sistema-principal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            max-height: 100dvh;
+            flex-direction: column;
+            background: #111;
+            color: white;
+            overflow: hidden;
+            z-index: 1;
+        }
 
         #header {
             height: 120px;
+            min-height: 120px;
+            max-height: 120px;
             background: linear-gradient(135deg, #B4D445 0%, #6a9a3a 28%, #135242 72%, #0d3d32 100%);
             border-bottom: 4px solid #B4D445;
             position: relative;
@@ -109,16 +136,23 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 2000;
             flex-shrink: 0;
+            flex-grow: 0;
             box-shadow: 0 4px 24px rgba(19, 82, 66, 0.4);
-            overflow: hidden;
+            overflow: visible;
+            /* Evita que el header se “pierda” tras pinch-zoom en móviles */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
         .logo-box { 
             position: absolute; 
             top: 50%; 
-            transform: translateY(-50%); 
+            transform: translateY(-50%) translateZ(0);
             width: 160px;        
             height: 100px;       
             display: flex; 
@@ -149,6 +183,7 @@
             margin-bottom: 5px;
             z-index: 1010;
             text-shadow: 0 2px 6px rgba(0,0,0,0.35);
+            position: relative;
         }
 
         #contenedor { display: flex; flex-grow: 1; overflow: hidden; }
@@ -4132,6 +4167,65 @@
     });
 
     document.querySelectorAll('.sidebar-input, .sidebar-select').forEach(el => el.addEventListener('change', guardarProgresoMapa));
+
+    /* ========== Fix móvil: header no debe desaparecer tras zoom en la leyenda ========== */
+    (function fixHeaderTrasZoomMovil() {
+        function restaurarHeader() {
+            try {
+                // Tras pinch-zoom el navegador a veces deja el layout desplazado
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+
+                const sp = document.getElementById('sistema-principal');
+                if (sp) {
+                    sp.scrollTop = 0;
+                    if (getComputedStyle(sp).display !== 'none') {
+                        sp.style.display = 'flex';
+                        sp.style.position = 'fixed';
+                        sp.style.inset = '0';
+                        sp.style.height = (window.visualViewport ? window.visualViewport.height : window.innerHeight) + 'px';
+                    }
+                }
+
+                const h = document.getElementById('header');
+                if (h) {
+                    h.style.display = 'flex';
+                    h.style.visibility = 'visible';
+                    h.style.opacity = '1';
+                    h.style.minHeight = '120px';
+                    h.style.height = '120px';
+                    // Forzar repaint (bug de capas GPU en Chrome/Android tras zoom)
+                    void h.offsetHeight;
+                }
+
+                if (typeof map !== 'undefined' && map) {
+                    try { map.invalidateSize({ animate: false }); } catch (e) {}
+                }
+            } catch (e) {}
+        }
+
+        let timer = null;
+        function programarRestaurar() {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(restaurarHeader, 120);
+        }
+
+        window.addEventListener('resize', programarRestaurar, { passive: true });
+        window.addEventListener('orientationchange', function() {
+            setTimeout(restaurarHeader, 250);
+        }, { passive: true });
+
+        // Evento clave: al terminar el pinch-zoom en móvil
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', programarRestaurar, { passive: true });
+            window.visualViewport.addEventListener('scroll', programarRestaurar, { passive: true });
+        }
+
+        // Al soltar el dedo tras acercar/alejar
+        document.addEventListener('touchend', programarRestaurar, { passive: true });
+        document.addEventListener('gestureend', programarRestaurar, { passive: true });
+    })();
 </script>
 </body>
 </html>
