@@ -138,48 +138,74 @@
             overflow: hidden;
         }
 
-        /* Móvil: header estable + logos controlados (anti pinch-zoom) */
+        /* Móvil: proporciones como referencia (zon01) + anti pinch-zoom */
         @media (max-width: 768px) {
             #header {
-                height: 88px !important;
-                min-height: 88px !important;
-                max-height: 88px !important;
+                height: 72px !important;
+                min-height: 72px !important;
+                max-height: 72px !important;
                 flex-shrink: 0 !important;
                 overflow: hidden !important;
                 position: relative !important;
                 z-index: 3000 !important;
+                padding: 0 4px !important;
             }
             .logo-box {
-                width: 78px !important;
-                height: 62px !important;
+                width: 70px !important;
+                height: 56px !important;
                 top: 50% !important;
                 transform: translateY(-50%) !important;
                 overflow: hidden !important;
             }
-            .logo-left { left: 4px !important; }
-            .logo-right { right: 4px !important; }
+            .logo-left { left: 2px !important; }
+            .logo-right { right: 2px !important; }
             .logo-box img {
-                transform: scale(1.45) !important;
+                transform: scale(1.55) !important;
                 transform-origin: center center !important;
             }
             #titulo-principal {
-                font-size: 13px !important;
-                margin-bottom: 2px !important;
-                padding: 0 86px !important;
+                font-size: 12.5px !important;
+                margin-bottom: 1px !important;
+                padding: 0 74px !important;
                 text-align: center !important;
-                line-height: 1.15 !important;
+                line-height: 1.2 !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                letter-spacing: 0.2px;
             }
             #header > div:not(.logo-box) {
-                font-size: 10px !important;
-                padding: 0 86px !important;
+                font-size: 9.5px !important;
+                padding: 0 74px !important;
                 text-align: center;
+                line-height: 1.15;
             }
             #sidebar {
-                width: min(100vw, 360px);
-                max-width: 85vw;
+                width: min(100vw, 340px);
+                max-width: 82vw;
+                padding: 10px 12px;
+            }
+            /* Controles de zoom: más compactos, menos invasivos */
+            .zoom-preciso-panel {
+                top: 10px !important;
+                right: 8px !important;
+                padding: 6px 8px !important;
+                gap: 6px !important;
+                transform: scale(0.92);
+                transform-origin: top right;
+            }
+            .zoom-preciso-panel input[type="range"] {
+                width: 90px !important;
+            }
+            .controles-mapa-horiz {
+                top: 10px !important;
+                left: 48px !important;
+                gap: 6px !important;
+            }
+            .btn-float {
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 16px !important;
             }
         }
 
