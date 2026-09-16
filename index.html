@@ -208,17 +208,20 @@
             .zoom-preciso-panel {
                 display: none !important;
             }
-            /* Botones + / − de Leaflet: cómodos en móvil */
+            /* + / − arriba a la derecha (espacio libre junto a ubicación) */
+            .leaflet-top.leaflet-right {
+                top: 10px !important;
+                right: 8px !important;
+            }
             .leaflet-control-zoom {
                 border: none !important;
+                margin: 0 !important;
                 box-shadow: 0 3px 10px rgba(0,0,0,0.35) !important;
-                margin-right: 10px !important;
-                margin-bottom: 16px !important;
             }
             .leaflet-control-zoom a {
-                width: 40px !important;
-                height: 40px !important;
-                line-height: 40px !important;
+                width: 42px !important;
+                height: 42px !important;
+                line-height: 42px !important;
                 font-size: 22px !important;
                 color: #135242 !important;
                 background: #fff !important;
@@ -231,9 +234,10 @@
                 border-radius: 0 0 10px 10px !important;
                 border-bottom: none !important;
             }
-            .leaflet-bottom.leaflet-right {
-                bottom: 8px !important;
-                right: 4px !important;
+            /* Las herramientas flotantes quedan a la izquierda, sin solaparse */
+            .controles-mapa-horiz {
+                right: auto !important;
+                max-width: calc(100% - 70px) !important;
             }
             .btn-mapa {
                 font-size: 12px !important;
@@ -3728,7 +3732,10 @@
 
     function inicializarMapa() {
         if (map) return;
-        map = L.map('map', { editable: true, zoomControl: true }).setView([10.136, -64.686], 18);
+        const esMovilMapa = window.matchMedia('(max-width: 768px)').matches;
+        map = L.map('map', { editable: true, zoomControl: false }).setView([10.136, -64.686], 18);
+        // Teléfono: +/− arriba derecha | Computadora: arriba izquierda (como antes)
+        L.control.zoom({ position: esMovilMapa ? 'topright' : 'topleft' }).addTo(map);
         L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
         map.on('editable:drawing:start', e => { trazandoAhora = e.layer; document.getElementById('btnFinalizar').style.display = 'flex'; });
         map.on('editable:drawing:click', e => { if (tipoDeTrazadoActivo === 'evac' && trazandoAhora) { trazandoAhora.colorEvac = document.getElementById('colorEvac').value; trazandoAhora.grosorEvac = parseInt(document.getElementById('grosorEvac').value); trazandoAhora.setStyle({ color: trazandoAhora.colorEvac, weight: 0, fill: false }); recrearFlechasRuta(trazandoAhora); } });
