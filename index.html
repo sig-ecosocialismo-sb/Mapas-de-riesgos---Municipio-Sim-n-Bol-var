@@ -208,6 +208,113 @@
             .zoom-preciso-panel {
                 display: none !important;
             }
+
+            /* Portada de registro: sin zoom excesivo, se ve el degradado de fondo */
+            #pantalla-registro {
+                padding: 10px !important;
+                align-items: flex-start !important;
+                justify-content: center !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                height: 100% !important;
+                height: 100dvh !important;
+            }
+            .card-registro {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 18px 14px !important;
+                border-radius: 16px !important;
+                margin: 8px 0 20px 0 !important;
+                box-sizing: border-box !important;
+            }
+            .logos-registro {
+                height: 64px !important;
+                margin-bottom: 12px !important;
+            }
+            .logo-wrapper {
+                flex: 0 0 110px !important;
+                height: 64px !important;
+            }
+            .logos-registro img {
+                transform: scale(1.35) !important;
+            }
+            #pantalla-registro h2 {
+                font-size: 17px !important;
+            }
+            #pantalla-registro .subtitle {
+                font-size: 11px !important;
+                margin-bottom: 16px !important;
+            }
+            .tabs-acceso {
+                gap: 10px !important;
+                margin-bottom: 14px !important;
+            }
+            .form-registro, .form-admin {
+                gap: 10px !important;
+            }
+            .form-row {
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+            input, select {
+                font-size: 16px !important; /* evita zoom automático iOS al enfocar */
+                padding: 10px !important;
+            }
+            .btn-acceder {
+                padding: 14px !important;
+                font-size: 13px !important;
+            }
+
+            /* Modal de reporte: caben botones Cerrar / Reportar en pantalla pequeña */
+            #modal-reporte-riesgo {
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                padding: 6px !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            .card-reporte-telegram {
+                width: 100% !important;
+                max-width: 100% !important;
+                max-height: 98dvh !important;
+                border-radius: 12px !important;
+                margin: 0 !important;
+            }
+            .header-modal-reporte {
+                padding: 10px 12px !important;
+                flex-shrink: 0 !important;
+            }
+            .header-modal-reporte h3 {
+                font-size: 13px !important;
+            }
+            .body-modal-reporte {
+                padding: 10px 12px !important;
+                max-height: none !important;
+                flex: 1 1 auto !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            .footer-modal-reporte {
+                padding: 10px 12px !important;
+                flex-shrink: 0 !important;
+                position: sticky !important;
+                bottom: 0 !important;
+                z-index: 5 !important;
+            }
+            .btn-telegram-enviar, .btn-cancelar-modal {
+                padding: 10px 12px !important;
+                font-size: 11px !important;
+            }
+            .grid-slots-fotos {
+                gap: 6px !important;
+            }
+            .slot-foto {
+                height: 56px !important;
+            }
+            .reporte-item-grid {
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+            }
             /* + / − arriba a la derecha (espacio libre junto a ubicación) */
             .leaflet-top.leaflet-right {
                 top: 10px !important;
@@ -656,6 +763,7 @@
             border-radius: 18px;
             width: 92%;
             max-width: 520px;
+            max-height: 92vh;
             box-shadow: 0 15px 50px rgba(0,0,0,0.8), 0 0 20px rgba(34,158,217,0.25);
             display: flex;
             flex-direction: column;
@@ -694,8 +802,11 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            max-height: 75vh;
+            max-height: 55vh;
             overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
+            -webkit-overflow-scrolling: touch;
         }
 
         .reporte-item-grid {
@@ -1493,7 +1604,6 @@
                 <span style="font-size:22px;">📢</span>
                 <div>
                     <h3 style="margin:0; font-size:15px; color:#fff; text-transform:uppercase; letter-spacing:0.5px;">Reportar Riesgo Ambiental</h3>
-                    <div style="font-size:10px; color:#229ED9; font-weight:bold;">Canal de Telegram Comunitario</div>
                 </div>
             </div>
             <button class="btn-cerrar-modal" onclick="cerrarModalReporte()">✕</button>
@@ -3833,7 +3943,43 @@
         L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
         map.on('editable:drawing:start', e => { trazandoAhora = e.layer; document.getElementById('btnFinalizar').style.display = 'flex'; });
         map.on('editable:drawing:click', e => { if (tipoDeTrazadoActivo === 'evac' && trazandoAhora) { trazandoAhora.colorEvac = document.getElementById('colorEvac').value; trazandoAhora.grosorEvac = parseInt(document.getElementById('grosorEvac').value); trazandoAhora.setStyle({ color: trazandoAhora.colorEvac, weight: 0, fill: false }); recrearFlechasRuta(trazandoAhora); } });
-        map.on('editable:drawing:end', e => { registrarObjeto(e.layer); activarMano(); document.getElementById('btnFinalizar').style.display = 'none'; trazandoAhora = null; tipoDeTrazadoActivo = ""; document.getElementById('desplegable-riesgos-trazado').style.display = 'none'; guardarProgresoMapa(); });
+        map.on('editable:drawing:end', e => {
+            const capaNueva = e.layer;
+            registrarObjeto(capaNueva);
+            // Al terminar el trazado: ocultar los cuadros/vértices de edición hasta que se vuelva a seleccionar
+            try {
+                if (capaNueva && typeof capaNueva.disableEdit === 'function') capaNueva.disableEdit();
+            } catch (err) {}
+            activarMano();
+            document.getElementById('btnFinalizar').style.display = 'none';
+            trazandoAhora = null;
+            tipoDeTrazadoActivo = "";
+            document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
+            guardarProgresoMapa();
+        });
+        // Al arrastrar o borrar vértices de la vía de evacuación, actualizar las flechas en vivo
+        map.on('editable:vertex:drag', e => {
+            const layer = e.layer || (e.vertex && e.vertex.editor && e.vertex.editor.feature);
+            if (layer && layer.tipoId === 'ruta_evacuacion') {
+                try { recrearFlechasRuta(layer); } catch (err) {}
+            }
+        });
+        map.on('editable:vertex:dragend', e => {
+            const layer = e.layer || (e.vertex && e.vertex.editor && e.vertex.editor.feature);
+            if (!layer) return;
+            if (layer.tipoId === 'ruta_evacuacion') {
+                try { recrearFlechasRuta(layer); } catch (err) {}
+            }
+            try { guardarProgresoMapa(); } catch (err) {}
+        });
+        map.on('editable:vertex:deleted', e => {
+            const layer = e.layer || (e.vertex && e.vertex.editor && e.vertex.editor.feature);
+            if (!layer) return;
+            if (layer.tipoId === 'ruta_evacuacion') {
+                try { recrearFlechasRuta(layer); } catch (err) {}
+            }
+            try { guardarProgresoMapa(); } catch (err) {}
+        });
         map.on('click', e => { if (emojiActual && !modoNavegar) crearIcono(e.latlng); else deseleccionarTodo(); });
         map.on('zoomend', function() {
             try { sincronizarControlesZoom(map.getZoom()); } catch (e) {}
@@ -4252,7 +4398,14 @@
         }
     }
 
-    function deseleccionarTodo() { if (objetoSeleccionado && objetoSeleccionado.disableEdit) objetoSeleccionado.disableEdit(); objetoSeleccionado = null; }
+    function deseleccionarTodo() {
+        if (objetoSeleccionado) {
+            try {
+                if (typeof objetoSeleccionado.disableEdit === 'function') objetoSeleccionado.disableEdit();
+            } catch (e) {}
+        }
+        objetoSeleccionado = null;
+    }
     function activarMano() { emojiActual = null; modoNavegar = true; document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); document.getElementById('floatMano').classList.add('activo-float'); }
     function cambiarEmoji(e, btn, esp) { emojiActual = e; modoEspecial = esp; modoNavegar = false; document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.getElementById('floatMano').classList.remove('adjustable-float'); document.getElementById('floatMano').classList.remove('activo-float'); }
     function actualizarBadges() {
