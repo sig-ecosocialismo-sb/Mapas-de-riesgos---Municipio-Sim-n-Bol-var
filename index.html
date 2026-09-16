@@ -697,6 +697,50 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
 
+        /* Toast breve de feedback (deshacer / rehacer / avisos) */
+        #toast-sig {
+            position: fixed;
+            bottom: 54px;
+            left: 50%;
+            transform: translateX(-50%) translateY(12px);
+            background: rgba(18, 28, 22, 0.96);
+            color: #B4D445;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 10px 18px;
+            border-radius: 24px;
+            border: 1px solid #B4D445;
+            z-index: 100000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+            max-width: 90vw;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+        #toast-sig.toast-visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast-sig.toast-aviso {
+            color: #fbbf24;
+            border-color: #fbbf24;
+        }
+        #toast-sig.toast-error {
+            color: #f87171;
+            border-color: #f87171;
+        }
+
+        .btn-float {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        .btn-float:active {
+            transform: scale(0.92);
+        }
+
         /* ===================== HISTORIAL DE REPORTES EN LA BARRA ===================== */
         .card-hist-reporte {
             background: #1c201e;
@@ -1057,7 +1101,7 @@
             }
 
             #pantalla-registro, #video-contenedor, #modal-reporte-riesgo,
-            .controles-mapa-horiz, .zoom-preciso-panel, #indicador-autoguardado,
+            .controles-mapa-horiz, .zoom-preciso-panel, #indicador-autoguardado, #toast-sig,
             #btnVolverAdmin, #panel-admin-comunas, #panel-voceros-lista,
             #contenedor-mapas-realizados, #desplegable-riesgos-trazado,
             #btnDibujo, #btnLinea, #btnEvacuacion,
@@ -1564,6 +1608,7 @@
             </div>
             <div id="map"></div>
             <div id="indicador-autoguardado">💾 Autoguardado...</div>
+            <div id="toast-sig" role="status" aria-live="polite"></div>
         </div>
     </div>
 </div>
@@ -2271,8 +2316,13 @@
         document.getElementById('rep-preview-texto').innerText = textoReporte;
     }
 
+    let _enviandoReporte = false;
     async function enviarReporteTelegram() {
         if (!objetoReporteActivo) return;
+        if (_enviandoReporte) {
+            if (typeof mostrarToast === 'function') mostrarToast('Ya se está enviando el reporte…', 'aviso');
+            return;
+        }
 
         const cantFotos = fotosReporteActual.filter(f => f !== null).length;
         if (cantFotos < 3) {
@@ -2280,6 +2330,7 @@
             return;
         }
 
+        _enviandoReporte = true;
         const btnEnviar = document.querySelector('.btn-telegram-enviar');
         const textoOriginalBtn = btnEnviar ? btnEnviar.innerHTML : '';
         if (btnEnviar) {
@@ -2459,7 +2510,8 @@
             }
             if (fnData && fnData.error) throw new Error(fnData.error);
 
-            alert("✅ Reporte enviado exitosamente a Telegram\n(Las fotos temporales fueron eliminadas de Supabase)");
+            if (typeof mostrarToast === "function") mostrarToast("✅ Reporte enviado a Telegram");
+            else alert("✅ Reporte enviado exitosamente a Telegram\n(Las fotos temporales fueron eliminadas de Supabase)");
             cerrarModalReporte();
         } catch (errorBot) {
             console.error("Error al enviar reporte:", errorBot);
@@ -2467,6 +2519,7 @@
             alert("⚠️ El reporte se marcó en el mapa, pero no se pudo completar el envío a Telegram.\n\nMotivo: " + razon + "\n\nRevisa permisos de Storage/tabla o la Edge Function.");
             cerrarModalReporte();
         } finally {
+            _enviandoReporte = false;
             if (btnEnviar) {
                 btnEnviar.disabled = false;
                 btnEnviar.innerHTML = textoOriginalBtn;
@@ -2874,8 +2927,14 @@
 
     function limpiarMapaCompletamente() {
         if (!map) return;
-        stackElementos.forEach(capa => { map.removeLayer(capa); if(capa._decoradorFlechas) map.removeLayer(capa._decoradorFlechas); });
-        stackElementos = []; for (let k in contadores) contadores[k] = 0;
+        stackElementos.forEach(capa => {
+            try { if (capa && typeof capa.disableEdit === 'function') capa.disableEdit(); } catch (e) {}
+            try { if (capa && capa._decoradorFlechas) map.removeLayer(capa._decoradorFlechas); } catch (e) {}
+            try { map.removeLayer(capa); } catch (e) {}
+        });
+        stackElementos = [];
+        stackRedo = [];
+        for (let k in contadores) contadores[k] = 0;
         mapaSoloLectura = false;
         actualizarBadges(); document.getElementById('infoSector').value = ""; document.getElementById('lista-antecedentes').innerHTML = "";
         const listaCC = document.getElementById('lista-consejos-comunales');
@@ -3123,6 +3182,8 @@
             }
         });
         actualizarBadges();
+        // Tras cargar desde nube/local, el historial de rehacer no aplica a ese estado
+        stackRedo = [];
     }
 
     function alternarRellenoPoligonoEnVivo(idCapa, checked) {
@@ -3737,6 +3798,32 @@
     var map, emojiActual = null, modoEspecial = "", modoNavegar = true;
     var stackElementos = [], stackRedo = [];
     var objetoSeleccionado = null, trazandoAhora = null, tipoDeTrazadoActivo = "";
+    var _toastTimerSig = null;
+    var _undoBusy = false;
+
+    function mostrarToast(msg, tipo) {
+        const el = document.getElementById('toast-sig');
+        if (!el) return;
+        el.classList.remove('toast-visible', 'toast-aviso', 'toast-error');
+        if (tipo === 'aviso') el.classList.add('toast-aviso');
+        if (tipo === 'error') el.classList.add('toast-error');
+        el.textContent = msg;
+        // force reflow for re-trigger animation
+        void el.offsetWidth;
+        el.classList.add('toast-visible');
+        if (_toastTimerSig) clearTimeout(_toastTimerSig);
+        _toastTimerSig = setTimeout(function () {
+            el.classList.remove('toast-visible');
+        }, 2200);
+    }
+
+    function esMapaEditable() {
+        if (typeof mapaSoloLectura !== 'undefined' && mapaSoloLectura) {
+            mostrarToast('Mapa en solo lectura (consolidado)', 'aviso');
+            return false;
+        }
+        return true;
+    }
     var overlayImpresion = null;
     var vulnerabilidadesManual = { vuln_emb: 0, vuln_disc: 0, vuln_nino: 0, vuln_adult: 0, vuln_cron: 0 };
     var contadores = { refugio_idlesia:0, refugio_escuela:0, refugio_comedor:0, refugio_misiones:0, centro_med:0, cpt1:0, cpt2:0, cpt3:0, pol_inst:0, bom_inst:0, pc_inst:0, cuadrante:0, medico:0, enfermero:0, paramedico:0, pol_amb:0, inparques:0, mov_amb:0, riesgo_carro: 0, arbol_v:0, cables:0, casa_r:0, inund:0, terreno_i:0, footer:0, derrumbe:0, blancas:0, servidas:0, basura:0, colector:0, autolavado:0, taller:0, carpinteria_porton:0, cauchera:0, verde:0, huerto:0, araguaney:0, apamate:0, cereipo:0, pollos:0, cerdo_c:0, cerdo_s:0, ovejos:0, cautivo:0, invasora:0, vuln_emb:0, vuln_disc:0, vuln_nino:0, vuln_adult:0, vuln_cron:0, recicladores: 0, poste_riesgo: 0, pozo_derrumbado: 0, manglar:0, desechos_peligrosos: 0, riesgo_personalizado: 0, serv_gas: 0, serv_agua: 0, serv_drenaje: 0 };
@@ -4135,7 +4222,9 @@
         }
     }
 
-    function iniciarTrazado(tipo) { 
+    function iniciarTrazado(tipo) {
+        if (!esMapaEditable()) return;
+        if (!map) return;
         deseleccionarTodo(); 
         emojiActual = null; 
         modoNavegar = true; 
@@ -4204,6 +4293,9 @@
     }
 
     function crearIcono(latlng) {
+        if (!map || !latlng) return;
+        if (!esMapaEditable()) return;
+        if (!modoEspecial && !emojiActual) return;
         let contenidoIcono = resolverContenidoIcono(modoEspecial, emojiActual);
         const esCptNuevo = (modoEspecial === 'cpt1' || modoEspecial === 'cpt2' || modoEspecial === 'cpt3');
         const esPolAmbNuevo = (modoEspecial === 'pol_amb');
@@ -4347,6 +4439,7 @@
 
     async function eliminarObjeto(obj) {
         if (!obj) return;
+        if (!esMapaEditable()) return;
 
         const eraReportado = !!(obj.fueReportado && esRiesgoAmbiental(obj.tipoId));
         const numRep = obj.numeroReporte || '';
@@ -4363,13 +4456,31 @@
             if (!confirmar) return;
         }
 
+        // Quitar del stack de elementos y dejarlo disponible para REHACER
+        stackElementos = stackElementos.filter(i => i !== obj);
+        // No duplicar en redo
+        stackRedo = stackRedo.filter(i => i !== obj);
+        stackRedo.push(obj);
+        if (stackRedo.length > 80) stackRedo.shift();
+
         if (obj.tipoId && contadores[obj.tipoId] !== undefined && contadores[obj.tipoId] > 0) contadores[obj.tipoId]--; 
         actualizarBadges();
-        if (obj.tipoId === 'recicladores') alternarLeyendaNormal(); 
-        if (obj._decoradorFlechas) map.removeLayer(obj._decoradorFlechas);
-        
-        // Eliminar del historial local de reportes
+        if (obj.tipoId === 'recicladores') alternarLeyendaNormal();
+
+        try {
+            if (typeof obj.disableEdit === 'function') obj.disableEdit();
+        } catch (e) {}
+        if (obj._decoradorFlechas) {
+            try { map.removeLayer(obj._decoradorFlechas); } catch (e) {}
+        }
+
+        // Respaldar y quitar del historial local de reportes (para poder restaurar con rehacer)
         const stampObj = L.stamp(obj);
+        try {
+            obj._historialBackup = dbHistorialReportes.filter(r =>
+                r.layerStamp === stampObj || (numRep && r.numeroReporte === numRep)
+            );
+        } catch (e) { obj._historialBackup = []; }
         dbHistorialReportes = dbHistorialReportes.filter(r => {
             if (r.layerStamp === stampObj) return false;
             if (numRep && r.numeroReporte === numRep) return false;
@@ -4378,10 +4489,10 @@
         localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
         renderizarHistorialReportes();
 
-        map.removeLayer(obj); 
-        stackElementos = stackElementos.filter(i => i !== obj); 
-        objetoSeleccionado = null; 
+        try { map.removeLayer(obj); } catch (e) {}
+        objetoSeleccionado = null;
         guardarProgresoMapa();
+        mostrarToast('Elemento eliminado (puedes rehacer ↪️)');
 
         // Si estaba reportado → borrar también de reportes_riesgos (dashboard)
         if (eraReportado && numRep) {
@@ -4406,8 +4517,30 @@
         }
         objetoSeleccionado = null;
     }
-    function activarMano() { emojiActual = null; modoNavegar = true; document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); document.getElementById('floatMano').classList.add('activo-float'); }
-    function cambiarEmoji(e, btn, esp) { emojiActual = e; modoEspecial = esp; modoNavegar = false; document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.getElementById('floatMano').classList.remove('adjustable-float'); document.getElementById('floatMano').classList.remove('activo-float'); }
+    function activarMano() {
+        emojiActual = null;
+        modoEspecial = '';
+        modoNavegar = true;
+        document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active'));
+        const fm = document.getElementById('floatMano');
+        if (fm) {
+            fm.classList.remove('adjustable-float');
+            fm.classList.add('activo-float');
+        }
+    }
+    function cambiarEmoji(e, btn, esp) {
+        if (!esMapaEditable()) return;
+        emojiActual = e;
+        modoEspecial = esp;
+        modoNavegar = false;
+        document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        const fm = document.getElementById('floatMano');
+        if (fm) {
+            fm.classList.remove('adjustable-float');
+            fm.classList.remove('activo-float');
+        }
+    }
     function actualizarBadges() {
         for (let k in contadores) {
             if (contadores[k] === undefined || isNaN(contadores[k])) contadores[k] = 0;
@@ -4416,68 +4549,180 @@
         }
     }
 
+    // ---------- Helpers deshacer / rehacer (capas Leaflet seguras) ----------
+    function _quitarCapaDelMapaSeguro(el) {
+        if (!el || !map) return;
+        try {
+            if (typeof el.disableEdit === 'function') el.disableEdit();
+        } catch (e) {}
+        try {
+            if (el._decoradorFlechas) {
+                map.removeLayer(el._decoradorFlechas);
+            }
+        } catch (e) {}
+        try {
+            if (map.hasLayer(el)) map.removeLayer(el);
+            else map.removeLayer(el);
+        } catch (e) {
+            try { map.removeLayer(el); } catch (e2) {}
+        }
+    }
+
+    function _agregarCapaAlMapaSeguro(el) {
+        if (!el || !map) return;
+        try {
+            if (!map.hasLayer(el)) el.addTo(map);
+        } catch (e) {
+            try { map.addLayer(el); } catch (e2) { console.warn('No se pudo re-agregar capa:', e2); }
+        }
+        try {
+            if (el.tipoId === 'ruta_evacuacion' && typeof recrearFlechasRuta === 'function') {
+                recrearFlechasRuta(el);
+            } else if (el._decoradorFlechas) {
+                try { el._decoradorFlechas.addTo(map); } catch (e) {}
+            }
+        } catch (e) { console.warn(e); }
+    }
+
+    function _ajustarContadorCapa(el, delta) {
+        if (!el || !el.tipoId) return;
+        if (contadores[el.tipoId] === undefined || isNaN(contadores[el.tipoId])) contadores[el.tipoId] = 0;
+        contadores[el.tipoId] = Math.max(0, (contadores[el.tipoId] || 0) + delta);
+        actualizarBadges();
+    }
+
+    function _respaldarHistorialDeCapa(el) {
+        try {
+            const stamp = L.stamp(el);
+            const num = el.numeroReporte || '';
+            const relacionados = dbHistorialReportes.filter(r =>
+                r.layerStamp === stamp || (num && r.numeroReporte === num)
+            );
+            el._historialBackup = relacionados;
+            if (relacionados.length) {
+                dbHistorialReportes = dbHistorialReportes.filter(r =>
+                    r.layerStamp !== stamp && !(num && r.numeroReporte === num)
+                );
+                localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+                if (typeof renderizarHistorialReportes === 'function') renderizarHistorialReportes();
+            }
+        } catch (e) {}
+    }
+
+    function _restaurarHistorialDeCapa(el) {
+        try {
+            if (el._historialBackup && el._historialBackup.length) {
+                // Evitar duplicados por numeroReporte
+                const nums = new Set(dbHistorialReportes.map(r => r.numeroReporte).filter(Boolean));
+                el._historialBackup.forEach(r => {
+                    if (r.numeroReporte && nums.has(r.numeroReporte)) return;
+                    dbHistorialReportes.push(r);
+                });
+                localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+                if (typeof renderizarHistorialReportes === 'function') renderizarHistorialReportes();
+            }
+        } catch (e) {}
+    }
+
     function deshacer() {
         if (!map) return;
-        if (!stackElementos.length) {
-            alert('No hay nada que deshacer.');
+
+        // Si hay un trazado en curso, cancelarlo primero (no cuenta como deshacer de elemento)
+        if (trazandoAhora) {
+            try {
+                if (map.editTools && typeof map.editTools.stopDrawing === 'function') {
+                    map.editTools.stopDrawing();
+                }
+            } catch (e) {}
+            try {
+                if (trazandoAhora && typeof trazandoAhora.disableEdit === 'function') trazandoAhora.disableEdit();
+            } catch (e) {}
+            try {
+                if (trazandoAhora && map.hasLayer(trazandoAhora)) map.removeLayer(trazandoAhora);
+            } catch (e) {}
+            trazandoAhora = null;
+            tipoDeTrazadoActivo = '';
+            const btnFin = document.getElementById('btnFinalizar');
+            if (btnFin) btnFin.style.display = 'none';
+            const desp = document.getElementById('desplegable-riesgos-trazado');
+            if (desp) desp.style.display = 'none';
+            activarMano();
+            mostrarToast('Trazado cancelado');
             return;
         }
+
+        if (!stackElementos.length) {
+            mostrarToast('Nada que deshacer', 'aviso');
+            return;
+        }
+        if (!esMapaEditable()) return;
+        if (_undoBusy) return;
+        _undoBusy = true;
+
+        // Liberar selección / vértices de edición activos
+        if (objetoSeleccionado) {
+            try {
+                if (typeof objetoSeleccionado.disableEdit === 'function') objetoSeleccionado.disableEdit();
+            } catch (e) {}
+            objetoSeleccionado = null;
+        }
+
         const el = stackElementos.pop();
         if (!el) return;
 
+        // Limitar historial de rehacer (evitar crecimiento infinito)
         stackRedo.push(el);
+        if (stackRedo.length > 80) stackRedo.shift();
 
-        try {
-            if (el._decoradorFlechas) map.removeLayer(el._decoradorFlechas);
-            if (map.hasLayer(el)) map.removeLayer(el);
-        } catch (e) { console.warn(e); }
+        _quitarCapaDelMapaSeguro(el);
+        _ajustarContadorCapa(el, -1);
+        _respaldarHistorialDeCapa(el);
 
-        if (el.tipoId) {
-            if (contadores[el.tipoId] === undefined || isNaN(contadores[el.tipoId])) contadores[el.tipoId] = 0;
-            if (contadores[el.tipoId] > 0) contadores[el.tipoId]--;
-            actualizarBadges();
+        // Si era reciclador y se quitó, volver a leyenda normal
+        if (el.tipoId === 'recicladores' && typeof alternarLeyendaNormal === 'function') {
+            try { alternarLeyendaNormal(); } catch (e) {}
         }
 
-        // Quitar del historial local si estaba reportado
-        try {
-            const stamp = L.stamp(el);
-            const antes = dbHistorialReportes.length;
-            dbHistorialReportes = dbHistorialReportes.filter(r => r.layerStamp !== stamp);
-            if (dbHistorialReportes.length !== antes) {
-                localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
-                renderizarHistorialReportes();
-            }
-        } catch (e) {}
-
-        guardarProgresoMapa();
+        try { guardarProgresoMapa(); } catch (e) {}
+        mostrarToast('↩️ Deshecho');
+        setTimeout(function () { _undoBusy = false; }, 180);
     }
 
     function rehacer() {
         if (!map) return;
         if (!stackRedo.length) {
-            alert('No hay nada que rehacer.');
+            mostrarToast('Nada que rehacer', 'aviso');
             return;
         }
+        if (!esMapaEditable()) return;
+        if (_undoBusy) return;
+        _undoBusy = true;
+
+        if (objetoSeleccionado) {
+            try {
+                if (typeof objetoSeleccionado.disableEdit === 'function') objetoSeleccionado.disableEdit();
+            } catch (e) {}
+            objetoSeleccionado = null;
+        }
+
         const el = stackRedo.pop();
         if (!el) return;
 
-        stackElementos.push(el);
-        try {
-            el.addTo(map);
-            if (el.tipoId === 'ruta_evacuacion' && typeof recrearFlechasRuta === 'function') {
-                recrearFlechasRuta(el);
-            } else if (el._decoradorFlechas) {
-                el._decoradorFlechas.addTo(map);
-            }
-        } catch (e) { console.warn(e); }
-
-        if (el.tipoId) {
-            if (contadores[el.tipoId] === undefined || isNaN(contadores[el.tipoId])) contadores[el.tipoId] = 0;
-            contadores[el.tipoId]++;
-            actualizarBadges();
+        // Evitar duplicar la misma capa si por algún motivo ya está en el stack
+        if (stackElementos.indexOf(el) !== -1) {
+            _agregarCapaAlMapaSeguro(el);
+            _undoBusy = false;
+            return;
         }
 
-        guardarProgresoMapa();
+        stackElementos.push(el);
+        _agregarCapaAlMapaSeguro(el);
+        _ajustarContadorCapa(el, +1);
+        _restaurarHistorialDeCapa(el);
+
+        try { guardarProgresoMapa(); } catch (e) {}
+        mostrarToast('↪️ Rehecho');
+        setTimeout(function () { _undoBusy = false; }, 180);
     }
 
     function activarModoImpresionOverlay() {
