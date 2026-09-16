@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>SIG Ecosocial - Municipio Simón Bolívar</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -19,10 +19,13 @@
         body, html {
             margin: 0;
             height: 100%;
+            width: 100%;
             font-family: 'Segoe UI', sans-serif;
             background: #000;
             overflow: hidden;
             overscroll-behavior: none;
+            position: fixed;
+            touch-action: manipulation;
         }
 
         #pantalla-registro {
@@ -106,7 +109,18 @@
             margin-top: 5px; width: auto; align-self: flex-end;
         }
 
-        #sistema-principal { display: none; width: 100vw; height: 100vh; flex-direction: column; background: #111; color: white; }
+        #sistema-principal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            background: #111;
+            color: white;
+            overflow: hidden;
+            z-index: 1;
+        }
 
         #header {
             height: 120px;
@@ -124,16 +138,49 @@
             overflow: hidden;
         }
 
-        /* Móvil: logos un poco más contenidos para no tapar el título */
+        /* Móvil: header estable + logos controlados (anti pinch-zoom) */
         @media (max-width: 768px) {
-            #header { height: 90px; min-height: 90px; }
-            .logo-box { width: 90px; height: 70px; }
-            .logo-left { left: 6px; }
-            .logo-right { right: 6px; }
-            .logo-box img { transform: scale(1.6); }
-            #titulo-principal { font-size: 14px; margin-bottom: 2px; padding: 0 100px; text-align: center; }
-            #header > div:not(.logo-box) { font-size: 10px !important; }
-            #sidebar { width: min(100vw, 360px); max-width: 85vw; }
+            #header {
+                height: 88px !important;
+                min-height: 88px !important;
+                max-height: 88px !important;
+                flex-shrink: 0 !important;
+                overflow: hidden !important;
+                position: relative !important;
+                z-index: 3000 !important;
+            }
+            .logo-box {
+                width: 78px !important;
+                height: 62px !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                overflow: hidden !important;
+            }
+            .logo-left { left: 4px !important; }
+            .logo-right { right: 4px !important; }
+            .logo-box img {
+                transform: scale(1.45) !important;
+                transform-origin: center center !important;
+            }
+            #titulo-principal {
+                font-size: 13px !important;
+                margin-bottom: 2px !important;
+                padding: 0 86px !important;
+                text-align: center !important;
+                line-height: 1.15 !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            #header > div:not(.logo-box) {
+                font-size: 10px !important;
+                padding: 0 86px !important;
+                text-align: center;
+            }
+            #sidebar {
+                width: min(100vw, 360px);
+                max-width: 85vw;
+            }
         }
 
         .logo-box { 
@@ -4154,28 +4201,54 @@
 
     document.querySelectorAll('.sidebar-input, .sidebar-select').forEach(el => el.addEventListener('change', guardarProgresoMapa));
 
-    /* Solo corrige el “scroll perdido” tras pinch-zoom en móvil (no toca el layout del mapa) */
+    /* Recuperar header después de pinch-zoom del navegador (móvil) */
     (function () {
-        function resetScrollSiZoomNormal() {
+        function forzarHeaderVisible() {
             try {
-                var scale = (window.visualViewport && window.visualViewport.scale) ? window.visualViewport.scale : 1;
-                // Solo cuando ya se alejó casi al 100%
-                if (scale > 1.08) return;
                 window.scrollTo(0, 0);
                 if (document.documentElement) document.documentElement.scrollTop = 0;
                 if (document.body) document.body.scrollTop = 0;
+
+                var header = document.getElementById('header');
+                var sistema = document.getElementById('sistema-principal');
+                if (header) {
+                    header.style.transform = 'none';
+                    header.scrollIntoView({ block: 'start', behavior: 'instant' });
+                }
+                if (sistema) {
+                    sistema.style.transform = 'none';
+                }
+                if (typeof map !== 'undefined' && map) {
+                    setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 80);
+                }
             } catch (e) {}
         }
+
+        function resetScrollSiZoomNormal() {
+            try {
+                var scale = (window.visualViewport && window.visualViewport.scale)
+                    ? window.visualViewport.scale
+                    : 1;
+                // Solo actuar cuando el usuario ya alejó casi al 100%
+                if (scale > 1.08) return;
+                forzarHeaderVisible();
+            } catch (e) {}
+        }
+
         var t = null;
         function schedule() {
             if (t) clearTimeout(t);
-            t = setTimeout(resetScrollSiZoomNormal, 150);
+            t = setTimeout(resetScrollSiZoomNormal, 120);
         }
+
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', schedule, { passive: true });
             window.visualViewport.addEventListener('scroll', schedule, { passive: true });
         }
         document.addEventListener('touchend', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+            setTimeout(forzarHeaderVisible, 300);
+        });
     })();
 </script>
 </body>
