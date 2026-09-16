@@ -3469,8 +3469,11 @@
             return false;
         }
 
+        // Sincroniza nombres de consejos → infoSector + contador
+        if (typeof sincronizarInfoSectorYContadorCC === 'function') sincronizarInfoSectorYContadorCC();
+
         const comunaSeleccionada = document.getElementById('selectComuna').value;
-        const sectorTexto = document.getElementById('infoSector').value.trim(); 
+        const sectorTexto = (document.getElementById('infoSector').value || '').trim(); 
         const estadoValor = document.getElementById('infoEstado').value;
         const municipioValor = document.getElementById('infoMunicipio').value;
         const parroquiaValor = document.getElementById('infoParroquia').value.trim();
@@ -3495,15 +3498,18 @@
             historialReportes: dbHistorialReportes 
         };
 
+        // Solo filas de antecedentes (NO las de consejos comunales)
         const antecedentes = [];
-        document.querySelectorAll('.fila-historia').forEach(fila => {
+        document.querySelectorAll('#lista-antecedentes .fila-historia').forEach(fila => {
             const inputs = fila.querySelectorAll('input');
-            if(inputs[0].value || inputs[1].value) antecedentes.push({ anio: inputs[0].value, suceso: inputs[1].value });
+            if (inputs.length >= 2 && (inputs[0].value || inputs[1].value)) {
+                antecedentes.push({ anio: inputs[0].value, suceso: inputs[1].value });
+            }
         });
 
         const payload = {
             id_comuna: comunaSeleccionada,
-            nombre_sector: sectorTexto,
+            nombre_sector: sectorTexto || 'Sin especificar',
             geometria_mapa: geojsonActual,
             usuario_email: correoUsuario,
             estado: estadoValor,
