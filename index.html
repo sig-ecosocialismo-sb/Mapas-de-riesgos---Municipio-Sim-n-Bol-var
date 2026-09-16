@@ -1169,13 +1169,20 @@
                             <option value="VENCEDORES INDIGENAS CUMANAGOTO">VENCEDORES INDIGENAS CUMANAGOTO</option>
                         </select>
                     </div>
-                    <div class="sidebar-form-group"><label class="sidebar-label">Cant. Consejo Comunales</label><input type="number" id="infoCC" class="sidebar-input" value="0"></div>
+                    <div class="sidebar-form-group"><label class="sidebar-label">Cant. Consejo Comunales</label><input type="number" id="infoCC" class="sidebar-input" value="0" readonly title="Se actualiza al agregar/quitar nombres abajo"></div>
                     <div class="sidebar-form-group"><label class="sidebar-label">Cant. de Calles</label><input type="number" id="infoCalles" class="sidebar-input" value="0"></div>
                     <div class="sidebar-form-group"><label class="sidebar-label">Asfaltadas</label><input type="number" id="infoAsf" class="sidebar-input" value="0"></div>
                     <div class="sidebar-form-group"><label class="sidebar-label">Sin Asfaltar</label><input type="number" id="infoNoAsf" class="sidebar-input" value="0"></div>
+                    <input type="hidden" id="infoSector" value="">
                     <div class="sidebar-form-group" style="grid-column: span 2;">
-                        <label class="sidebar-label">Sector(es) que abarca este mapa (opcional, solo referencia)</label>
-                        <input type="text" id="infoSector" class="sidebar-input" placeholder="Ej: Sector 1, Sector 2, Sector 3...">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px;">
+                            <label class="sidebar-label" style="margin:0;">Consejos Comunales</label>
+                            <button type="button" id="btn-toggle-consejos" onclick="toggleListaConsejos()" title="Mostrar / ocultar lista" style="background:#252827; color:var(--v-lim); border:1px solid #444; border-radius:4px; padding:3px 8px; font-size:10px; font-weight:bold; cursor:pointer;">👁️ Ocultar</button>
+                        </div>
+                        <div id="bloque-lista-consejos">
+                            <div id="lista-consejos-comunales"></div>
+                            <button class="btn-add-hist" type="button" onclick="agregarFilaConsejo()">+ AGREGAR CONSEJO COMUNAL</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1192,27 +1199,27 @@
                 <h4>👥 Factores de Vulnerabilidad</h4>
                 <button class="btn-mapa" onclick="cambiarEmoji('🤰',this,'vuln_emb')"><div>🤰 Mujer Embarazada</div> <span class="count-badge" id="count-vuln_emb">0</span></button>
                 <div class="sidebar-form-group" style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin:-2px 0 8px 0; padding:0 4px;">
-                    <label class="sidebar-label" style="margin:0;">Cantidad manual reportada:</label>
+                    <label class="sidebar-label" style="margin:0;">TOTAL EN LA COMUNA:</label>
                     <input type="number" min="0" class="sidebar-input" style="width:70px; text-align:center;" id="manual-vuln_emb" value="0" onchange="actualizarVulnerabilidadManual('vuln_emb', this.value)">
                 </div>
                 <button class="btn-mapa" onclick="cambiarEmoji('♿',this,'vuln_disc')"><div>♿ Pers. con Discapacidad</div> <span class="count-badge" id="count-vuln_disc">0</span></button>
                 <div class="sidebar-form-group" style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin:-2px 0 8px 0; padding:0 4px;">
-                    <label class="sidebar-label" style="margin:0;">Cantidad manual reportada:</label>
+                    <label class="sidebar-label" style="margin:0;">TOTAL EN LA COMUNA:</label>
                     <input type="number" min="0" class="sidebar-input" style="width:70px; text-align:center;" id="manual-vuln_disc" value="0" onchange="actualizarVulnerabilidadManual('vuln_disc', this.value)">
                 </div>
                 <button class="btn-mapa" onclick="cambiarEmoji('🧒',this,'vuln_nino')"><div>🧒 Niños y Niñas</div> <span class="count-badge" id="count-vuln_nino">0</span></button>
                 <div class="sidebar-form-group" style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin:-2px 0 8px 0; padding:0 4px;">
-                    <label class="sidebar-label" style="margin:0;">Cantidad manual reportada:</label>
+                    <label class="sidebar-label" style="margin:0;">TOTAL EN LA COMUNA:</label>
                     <input type="number" min="0" class="sidebar-input" style="width:70px; text-align:center;" id="manual-vuln_nino" value="0" onchange="actualizarVulnerabilidadManual('vuln_nino', this.value)">
                 </div>
                 <button class="btn-mapa" onclick="cambiarEmoji('👴',this,'vuln_adult')"><div>👴 Adulto Mayor</div> <span class="count-badge" id="count-vuln_adult">0</span></button>
                 <div class="sidebar-form-group" style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin:-2px 0 8px 0; padding:0 4px;">
-                    <label class="sidebar-label" style="margin:0;">Cantidad manual reportada:</label>
+                    <label class="sidebar-label" style="margin:0;">TOTAL EN LA COMUNA:</label>
                     <input type="number" min="0" class="sidebar-input" style="width:70px; text-align:center;" id="manual-vuln_adult" value="0" onchange="actualizarVulnerabilidadManual('vuln_adult', this.value)">
                 </div>
                 <button class="btn-mapa" onclick="cambiarEmoji('🩺',this,'vuln_cron')"><div>🩺 Enfermo Crónico</div> <span class="count-badge" id="count-vuln_cron">0</span></button>
                 <div class="sidebar-form-group" style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin:-2px 0 8px 0; padding:0 4px;">
-                    <label class="sidebar-label" style="margin:0;">Cantidad manual reportada:</label>
+                    <label class="sidebar-label" style="margin:0;">TOTAL EN LA COMUNA:</label>
                     <input type="number" min="0" class="sidebar-input" style="width:70px; text-align:center;" id="manual-vuln_cron" value="0" onchange="actualizarVulnerabilidadManual('vuln_cron', this.value)">
                 </div>
 
@@ -2761,6 +2768,8 @@
         stackElementos = []; for (let k in contadores) contadores[k] = 0;
         mapaSoloLectura = false;
         actualizarBadges(); document.getElementById('infoSector').value = ""; document.getElementById('lista-antecedentes').innerHTML = "";
+        const listaCC = document.getElementById('lista-consejos-comunales');
+        if (listaCC) listaCC.innerHTML = "";
         document.getElementById('infoParroquia').value = "";
         document.getElementById('infoCC').value = "0";
         document.getElementById('infoCalles').value = "0";
@@ -3069,10 +3078,14 @@
 
     function guardarProgresoMapa() {
         const antecedentes = [];
-        document.querySelectorAll('.fila-historia').forEach(fila => {
+        document.querySelectorAll('#lista-antecedentes .fila-historia').forEach(fila => {
             const inputs = fila.querySelectorAll('input');
-            if(inputs[0].value || inputs[1].value) antecedentes.push({ anio: inputs[0].value, suceso: inputs[1].value });
+            if (inputs.length >= 2 && (inputs[0].value || inputs[1].value)) {
+                antecedentes.push({ anio: inputs[0].value, suceso: inputs[1].value });
+            }
         });
+        sincronizarInfoSectorYContadorCC();
+        const consejosComunales = obtenerListaConsejosDesdeUI();
         if (objetoSeleccionado && objetoSeleccionado.tipoId === 'recicladores') objetoSeleccionado.datosReciclador = capturarCamposReciclador();
         
         localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
@@ -3083,7 +3096,9 @@
                 consejosC: document.getElementById('infoCC').value, calles: document.getElementById('infoCalles').value,
                 asfaltadas: document.getElementById('infoAsf').value, noAsfaltadas: document.getElementById('infoNoAsf').value, sector: document.getElementById('infoSector').value
             },
-            antecedentes: antecedentes, contadores: contadores, vulnerabilidadesManual: vulnerabilidadesManual, arbolPredominante: document.getElementById('inputArbolPredominante').value, elementos: construirElementosParaGuardar(),
+            antecedentes: antecedentes,
+            consejosComunales: consejosComunales,
+            contadores: contadores, vulnerabilidadesManual: vulnerabilidadesManual, arbolPredominante: document.getElementById('inputArbolPredominante').value, elementos: construirElementosParaGuardar(),
             historialReportes: dbHistorialReportes
         };
         localStorage.setItem('mapa_progreso_sig', JSON.stringify(datosCompletos));
@@ -3131,6 +3146,13 @@
                 document.getElementById('infoCC').value = data.infoTerritorial.consejosC || 0; document.getElementById('infoCalles').value = data.infoTerritorial.calles || 0;
                 document.getElementById('infoAsf').value = data.infoTerritorial.asfaltadas || 0; document.getElementById('infoNoAsf').value = data.infoTerritorial.noAsfaltadas || 0; document.getElementById('infoSector').value = data.infoTerritorial.sector || "";
             }
+            if (data.consejosComunales && Array.isArray(data.consejosComunales) && data.consejosComunales.length) {
+                cargarListaConsejos(data.consejosComunales);
+            } else if (data.infoTerritorial && data.infoTerritorial.sector) {
+                // Compatibilidad: sector antiguo como texto → lista de consejos
+                const partes = String(data.infoTerritorial.sector).split(',').map(s => s.trim()).filter(Boolean);
+                if (partes.length) cargarListaConsejos(partes);
+            }
             if(data.antecedentes) { document.getElementById('lista-antecedentes').innerHTML = ""; data.antecedentes.forEach(ant => agregarFilaHistoria(ant.anio, ant.suceso)); }
             if(data.vulnerabilidadesManual) {
                 for (let k in vulnerabilidadesManual) {
@@ -3162,6 +3184,13 @@
         document.getElementById('infoCalles').value = data.cant_de_calles || 0;
         document.getElementById('infoAsf').value = data.asfaltadas || 0;
         document.getElementById('infoNoAsf').value = data.sin_asfaltar || 0;
+
+        if (data.consejos_comunales && Array.isArray(data.consejos_comunales)) {
+            cargarListaConsejos(data.consejos_comunales);
+        } else if (data.nombre_sector) {
+            const partes = String(data.nombre_sector).split(',').map(s => s.trim()).filter(Boolean);
+            if (partes.length) cargarListaConsejos(partes);
+        }
 
         if (data.antecedentes) {
             document.getElementById('lista-antecedentes').innerHTML = "";
@@ -3282,6 +3311,65 @@
         let div = document.createElement('div'); div.className = 'fila-historia';
         div.innerHTML = `<input type="text" class="col-anio sidebar-input" placeholder="Año" value="${anio}"><input type="text" class="col-suceso sidebar-input" placeholder="Hito" value="${suceso}"><button class="btn-del-hist" onclick="this.parentElement.remove(); guardarProgresoMapa();">🗑️</button>`;
         document.getElementById('lista-antecedentes').appendChild(div);
+    }
+
+    function sincronizarInfoSectorYContadorCC() {
+        const nombres = [];
+        document.querySelectorAll('#lista-consejos-comunales .fila-consejo input').forEach(inp => {
+            const v = (inp.value || '').trim();
+            if (v) nombres.push(v);
+        });
+        const hiddenSector = document.getElementById('infoSector');
+        if (hiddenSector) hiddenSector.value = nombres.join(', ');
+        const infoCC = document.getElementById('infoCC');
+        if (infoCC) infoCC.value = String(nombres.length);
+    }
+
+    function agregarFilaConsejo(nombre = "") {
+        const lista = document.getElementById('lista-consejos-comunales');
+        if (!lista) return;
+        const div = document.createElement('div');
+        div.className = 'fila-historia fila-consejo';
+        div.innerHTML = `<input type="text" class="col-suceso sidebar-input" placeholder="Nombre del consejo comunal" value="${(nombre || '').replace(/"/g, '&quot;')}" onchange="sincronizarInfoSectorYContadorCC(); guardarProgresoMapa();" oninput="sincronizarInfoSectorYContadorCC();"><button class="btn-del-hist" type="button" title="Eliminar">🗑️</button>`;
+        const btn = div.querySelector('button');
+        btn.onclick = function () {
+            const nombreActual = (div.querySelector('input').value || '').trim() || 'este consejo comunal';
+            if (!confirm('⚠️ ¿Eliminar "' + nombreActual + '" de la lista de consejos comunales?\n\nEsta acción no se puede deshacer desde aquí.')) return;
+            div.remove();
+            sincronizarInfoSectorYContadorCC();
+            guardarProgresoMapa();
+        };
+        lista.appendChild(div);
+        sincronizarInfoSectorYContadorCC();
+        guardarProgresoMapa();
+    }
+
+    function toggleListaConsejos() {
+        const bloque = document.getElementById('bloque-lista-consejos');
+        const btn = document.getElementById('btn-toggle-consejos');
+        if (!bloque || !btn) return;
+        const oculto = bloque.style.display === 'none';
+        bloque.style.display = oculto ? 'block' : 'none';
+        btn.textContent = oculto ? '👁️ Ocultar' : '👁️ Mostrar';
+    }
+
+    function obtenerListaConsejosDesdeUI() {
+        const nombres = [];
+        document.querySelectorAll('#lista-consejos-comunales .fila-consejo input').forEach(inp => {
+            const v = (inp.value || '').trim();
+            if (v) nombres.push(v);
+        });
+        return nombres;
+    }
+
+    function cargarListaConsejos(nombres) {
+        const lista = document.getElementById('lista-consejos-comunales');
+        if (!lista) return;
+        lista.innerHTML = '';
+        if (Array.isArray(nombres) && nombres.length) {
+            nombres.forEach(n => agregarFilaConsejo(n));
+        }
+        sincronizarInfoSectorYContadorCC();
     }
 
     function obtenerEmojiPorId(id) {
