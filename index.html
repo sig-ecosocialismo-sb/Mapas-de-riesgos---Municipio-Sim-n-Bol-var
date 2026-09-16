@@ -100,35 +100,61 @@
 
         #sistema-principal { display: none; width: 100vw; height: 100vh; flex-direction: column; background: #111; color: white; }
 
-        #header { height: 130px; background: var(--v-osc); border-bottom: 5px solid var(--v-lim); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; flex-shrink: 0; }
+        #header {
+            height: 120px;
+            background: linear-gradient(135deg, #B4D445 0%, #6a9a3a 28%, #135242 72%, #0d3d32 100%);
+            border-bottom: 4px solid #B4D445;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-shrink: 0;
+            box-shadow: 0 4px 24px rgba(19, 82, 66, 0.4);
+            overflow: hidden;
+        }
 
         .logo-box { 
             position: absolute; 
             top: 50%; 
             transform: translateY(-50%); 
-            width: 200px;        
-            height: 120px;       
+            width: 160px;        
+            height: 100px;       
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            overflow: hidden;    
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1005;
         }
-        .logo-left { left: 20px; } 
-        .logo-right { right: 20px; }
+        .logo-left { left: 12px; } 
+        .logo-right { right: 12px; }
 
         .logo-box img { 
             width: 100%; 
             height: 100%; 
             object-fit: contain; 
-            transform: scale(2.4); 
+            transform: scale(2.0); 
+            transform-origin: center center;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+            pointer-events: none;
         } 
 
-        #titulo-principal { font-size: 22px; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 5px; z-index: 1010; }
+        #titulo-principal {
+            font-size: 22px;
+            font-weight: 800;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            z-index: 1010;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.35);
+        }
 
         #contenedor { display: flex; flex-grow: 1; overflow: hidden; }
         #sidebar { width: 440px; background: var(--negro); color: white; padding: 15px; overflow-y: auto; border-right: 2px solid #333; transition: margin-left 0.3s ease; }
 
-        h4 { color: var(--v-lim); font-size: 11px; text-transform: uppercase; margin: 15px 0 8px 0; border-bottom: 1px solid #444; padding-bottom: 4px; letter-spacing: 1px; }
+        h4 { color: var(--v-lim); font-size: 13px; text-transform: uppercase; margin: 15px 0 8px 0; border-bottom: 1px solid rgba(180,212,69,0.35); padding-bottom: 5px; letter-spacing: 1px; font-weight: 800; }
         .grid-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .sidebar-form-group { margin-bottom: 8px; }
         .sidebar-label { display: block; font-size: 9px; color: #888; margin-bottom: 2px; text-transform: uppercase; }
@@ -140,10 +166,45 @@
         .btn-del-hist { background: transparent; color: #ff4444; border: none; cursor: pointer; font-size: 14px; padding: 0 5px; }
         .btn-add-hist { background: var(--v-osc); color: var(--v-lim); border: 1px solid var(--v-lim); border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 10px; margin-top: 5px; width: 100%; }
 
-        .btn-mapa { width: 100%; padding: 8px; margin: 2px 0; background: #252827; color: white; border: 1px solid #444; border-radius: 6px; cursor: pointer; text-align: left; font-size: 10.5px; display: flex; align-items: center; justify-content: space-between; }
-        .btn-mapa div { display: flex; align-items: center; gap: 8px; }
-        .count-badge { background: #333; color: var(--v-lim); padding: 2px 6px; border-radius: 10px; font-weight: bold; font-size: 10px; }
-        .btn-mapa.activo { background: var(--v-osc) !important; border-color: var(--v-lim); }
+        .btn-mapa {
+            width: 100%;
+            padding: 10px 12px;
+            margin: 3px 0;
+            background: linear-gradient(135deg, #252827 0%, #1e2420 100%);
+            color: #f2f5f0;
+            border: 1px solid #3a4440;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: 0.15s ease;
+            line-height: 1.35;
+        }
+        .btn-mapa:hover {
+            border-color: #B4D445;
+            background: linear-gradient(135deg, rgba(180,212,69,0.12) 0%, #252827 100%);
+            color: #fff;
+        }
+        .btn-mapa div { display: flex; align-items: center; gap: 10px; }
+        .count-badge {
+            background: linear-gradient(135deg, rgba(180,212,69,0.25), rgba(19,82,66,0.5));
+            color: #B4D445;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 12px;
+            border: 1px solid rgba(180,212,69,0.3);
+        }
+        .btn-mapa.activo, .btn-mapa.active {
+            background: linear-gradient(135deg, rgba(180,212,69,0.28) 0%, #135242 100%) !important;
+            border-color: #B4D445 !important;
+            color: #fff !important;
+            box-shadow: 0 0 0 2px rgba(180,212,69,0.2);
+        }
 
         .map-icon-container { background: white !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.4); width: 24px; height: 24px; font-size: 14px; position: relative; color: black; transition: 0.3s; }
         .cruz-roja { width: 16px; height: 16px; position: relative; }
@@ -234,11 +295,16 @@
 
         .user-location-icon {
             background: #4285F4;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             border: 3px solid white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+            box-shadow: 0 0 0 2px rgba(66,133,244,0.35), 0 0 14px rgba(66,133,244,0.7), 0 2px 6px rgba(0,0,0,0.45);
+            animation: pulsoUbicacion 1.8s ease-in-out infinite;
+        }
+        @keyframes pulsoUbicacion {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(66,133,244,0.35), 0 0 12px rgba(66,133,244,0.55), 0 2px 6px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(66,133,244,0.15), 0 0 18px rgba(66,133,244,0.8), 0 2px 6px rgba(0,0,0,0.4); }
         }
 
         .btn-mini-delete {
@@ -678,8 +744,8 @@
 
             #map { width: 100% !important; height: 100% !important; }
 
-            h4 { font-size: 8px; margin: 6px 0 3px 0; padding-bottom: 2px; }
-            .btn-mapa { font-size: 7.5px; padding: 3px 4px; margin: 1px 0; }
+            h4 { font-size: 9px; margin: 6px 0 3px 0; padding-bottom: 2px; }
+            .btn-mapa { font-size: 9px; padding: 4px 5px; margin: 1px 0; }
             .sidebar-label { font-size: 7px; }
             .sidebar-input, .sidebar-select { font-size: 7.5px; padding: 2px 4px; }
             .grid-datos { gap: 3px; }
@@ -950,8 +1016,8 @@
 
                 <h4>🌳 Gestión Forestal</h4>
                 <div class="sidebar-form-group" style="margin-bottom: 12px; padding: 5px; background: #111; border-radius: 6px;">
-                    <label class="sidebar-label" style="color: var(--v-lim); font-weight: bold;">Especie Predominante:</label>
-                    <input type="text" id="inputArbolPredominante" class="sidebar-input" placeholder="Ej: Mango, Cují, Samán..." style="border: 1px solid #444;">
+                    <label class="sidebar-label" style="color: var(--v-lim); font-weight: bold;">ESPECIE DE ÁRBOL EN PELIGRO DE EXTINCIÓN:</label>
+                    <input type="text" id="inputArbolPredominante" class="sidebar-input" placeholder="" style="border: 1px solid #444;">
                 </div>
                 <button class="btn-mapa" onclick="cambiarEmoji('🌿',this,'verde')"><div>🌿 Área Verde / Plaza</div> <span class="count-badge" id="count-verde">0</span></button>
                 <button class="btn-mapa" onclick="cambiarEmoji('🌱',this,'huerto')"><div>🌱 Espacio Productivo</div> <span class="count-badge" id="count-huerto">0</span></button>
@@ -1316,6 +1382,9 @@
     let dbMapasCount = {};
     let rolActual = "usuario";
     let userLocationMarker = null;
+    let userAccuracyCircle = null;
+    let geoWatchId = null;
+    let geoMejorPrecision = Infinity;
     let intervaloAutoguardado = null;
     let mapaSoloLectura = false; 
     let emailPropietarioMapaActual = null; 
@@ -1481,65 +1550,66 @@
             return "Riesgo Ambiental Personalizado";
         }
         const nombres = {
-            'riesgo_carro': 'Veh\u00EDculo en Riesgo',
-            'arbol_v': '\u00C1rbol Ca\u00EDdo / Peligroso',
-            'cables': 'Cables El\u00E9ctricos Ca\u00EDdos',
-            'casa_r': 'Vivienda en Riesgo',
-            'inund': 'Punto de Inundaci\u00F3n',
-            'terreno_i': 'Terreno Inestable / Grieta',
-            'derrumbe': 'Derrumbe o Deslizamiento',
-            'blancas': 'Bote de Agua Blanca',
-            'servidas': 'Bote de Aguas Servidas',
-            'colector': 'Colector Ca\u00EDdo / Colapsado',
-            'basura': 'Acumulaci\u00F3n de Desechos S\u00F3lidos',
-            'poste_riesgo': 'Poste en Peligro de Ca\u00EDda',
-            'pozo_derrumbado': 'Pozo o Alcantarilla Sin Tapa',
-            'desechos_peligrosos': 'Desechos Peligrosos / T\u00F3xicos',
-            'autolavado': 'Autolavado Informal',
-            'taller': 'Taller Mec\u00E1nico',
-            'carpinteria_porton': 'Carpinter\u00EDa / Port\u00F3n',
-            'cauchera': 'Cauchera',
-            'verde': 'Espacio / \u00C1rea Verde',
-            'huerto': 'Huerto Comunitario',
-            'araguaney': '\u00C1rbol Araguaney',
-            'apamate': '\u00C1rbol Apamate',
-            'cereipo': '\u00C1rbol Cereipo',
-            'manglar': 'Manglar / Zona Protegida',
-            'pollos': 'Cr\u00EDa de Pollos',
-            'cerdo_c': 'Cr\u00EDa de Cerdos',
-            'cerdo_s': 'Cr\u00EDa de Cerdos',
-            'ovejos': 'Cr\u00EDa de Ovejos',
-            'cautivo': 'Fauna en Cautiverio',
-            'invasora': 'Especie Invasora',
-            'recicladores': 'Recicladores Urbanos',
-            'refugio_idlesia': 'Refugio Iglesia',
-            'refugio_escuela': 'Refugio Escuela',
-            'refugio_comedor': 'Refugio Comedor',
-            'refugio_misiones': 'Refugio Base de Misiones',
-            'vuln_emb': 'Vulnerabilidad: Embarazada',
-            'vuln_disc': 'Vulnerabilidad: Discapacidad',
-            'vuln_nino': 'Vulnerabilidad: Ni\u00F1o/a',
-            'vuln_adult': 'Vulnerabilidad: Adulto Mayor',
-            'vuln_cron': 'Vulnerabilidad: Enfermo Cr\u00F3nico',
-            'centro_med': 'Centro M\u00E9dico',
-            'cpt1': 'CPT Tipo 1',
-            'cpt2': 'CPT Tipo 2',
-            'cpt3': 'CPT Tipo 3',
-            'enfermero': 'Personal Enfermero',
-            'paramedico': 'Personal Param\u00E9dico',
-            'pol_inst': 'Polic\u00EDa',
-            'bom_inst': 'Bomberos',
-            'pc_inst': 'Protecci\u00F3n Civil',
+            'refugio_idlesia': 'Iglesia / Centro Religioso',
+            'refugio_escuela': 'Escuela / Unidad Educativa',
+            'refugio_comedor': 'Comedor / Casa Alimentaria',
+            'refugio_misiones': 'Base de Misiones',
+            'vuln_emb': 'Mujer Embarazada',
+            'vuln_disc': 'Pers. con Discapacidad',
+            'vuln_nino': 'Niños y Niñas',
+            'vuln_adult': 'Adulto Mayor',
+            'vuln_cron': 'Enfermo Crónico',
+            'centro_med': 'Centro Médico',
+            'cpt1': 'CPT Tipo I',
+            'cpt2': 'CPT Tipo II',
+            'cpt3': 'CPT Tipo III',
+            'medico': 'Personal Médico',
+            'enfermero': 'Personal de Enfermería',
+            'paramedico': 'Personal Paramédico',
+            'pol_inst': 'Módulo Policial',
+            'serv_gas': 'Tanquilla de Gas',
+            'serv_agua': 'Tubería de Agua',
+            'serv_drenaje': 'Boca de Drenaje / Alcantarillado',
             'cuadrante': 'Cuadrante de Paz',
-            'medico': 'M\u00E9dico',
-            'pol_amb': 'Polic\u00EDa Ambiental',
-            'inparques': 'Inparques',
-            'mov_amb': 'Movimiento Ambientalista',
-            'ruta_evacuacion': 'V\u00EDa de Evacuaci\u00F3n',
-            'poligono_riesgo': 'Pol\u00EDgono de Sector / Riesgo',
-            'serv_gas': 'Servicio de Gas Comunal',
-            'serv_agua': 'Servicio de Agua Potable',
-            'serv_drenaje': 'Sistema de Drenaje'
+            'bom_inst': 'Cuerpo de Bomberos',
+            'pc_inst': 'Protección Civil',
+            'pol_amb': 'Policía Ambiental',
+            'inparques': 'Personal Inparques',
+            'mov_amb': 'Movimientos Ambientales',
+            'pozo_derrumbado': 'Pozo Séptico Colapsado',
+            'poste_riesgo': 'Poste Eléctrico en Riesgo',
+            'riesgo_carro': 'Cauchera (Neumáticos Acumulados)',
+            'arbol_v': 'Árbol con Riesgo sobre Vivienda',
+            'cables': 'Árbol sobre Tendido Eléctrico',
+            'casa_r': 'Vivienda en Riesgo Estructural',
+            'inund': 'Zona Inundable / Desbordamiento',
+            'terreno_i': 'Terreno Inestable / Socavamiento',
+            'derrumbe': 'Zona con Riesgo de Derrumbe',
+            'blancas': 'Bote / Fuga de Agua Potable',
+            'servidas': 'Bote / Desborde de Aguas Servidas',
+            'colector': 'Colector Caído / Colapso de Cloaca',
+            'basura': 'Foco Crítico de Basura (Vertedero)',
+            'autolavado': 'Autolavado (Fuga / Contaminación)',
+            'taller': 'Taller Mecánico (Derrame Aceites)',
+            'carpinteria_porton': 'Carpintería / Emisión Aserrín',
+            'desechos_peligrosos': 'Desechos Peligrosos / Biológicos',
+            'verde': 'Área Verde / Plaza',
+            'huerto': 'Espacio Productivo',
+            'araguaney': 'Araguaney',
+            'apamate': 'Apamate',
+            'cereipo': 'Cereipo',
+            'manglar': 'Manglar',
+            'pollos': 'Cría de Pollos',
+            'cerdo_c': 'Cerdo (Cama Profunda)',
+            'cerdo_s': 'Cerdo (Sin Cama)',
+            'ovejos': 'Cría de Ovejos',
+            'cautivo': 'Animal en Cautiverio',
+            'invasora': 'Especie Invasora',
+            'recicladores': 'Puntos de Recicladores',
+            'ruta_evacuacion': 'Vía de Evacuación',
+            'poligono_riesgo': 'Polígono / Riesgo',
+            'linea_tecnica': 'Línea / Arroyo / Canal',
+            'cauchera': 'Cauchera (Neumáticos Acumulados)'
         };
         return nombres[tipoId] || tipoId || "Punto de Inspec\u00F3n";
     }
@@ -1923,6 +1993,33 @@
                 ? emailPropietarioMapaActual
                 : (localStorage.getItem('user_email_active') || '');
 
+            // Datos del empadronador (registro de entrada al SIG)
+            let nombreEmpadronador = '';
+            let telefonoEmpadronador = '';
+            try {
+                const vLocal = (typeof dbVoceros !== 'undefined' && Array.isArray(dbVoceros))
+                    ? dbVoceros.find(voc => voc.cor && correoUsuario && voc.cor.toLowerCase() === correoUsuario.toLowerCase())
+                    : null;
+                if (vLocal) {
+                    nombreEmpadronador = ((vLocal.nom || '') + ' ' + (vLocal.ape || '')).trim();
+                    telefonoEmpadronador = vLocal.tel || '';
+                }
+                if (!nombreEmpadronador && correoUsuario) {
+                    const { data: filasVoc } = await _supabase
+                        .from('registross_voceros')
+                        .select('*')
+                        .eq('correo', correoUsuario)
+                        .limit(1);
+                    if (filasVoc && filasVoc[0]) {
+                        const row = filasVoc[0];
+                        nombreEmpadronador = ((row.nombres || '') + ' ' + (row.apellidos || '')).trim();
+                        telefonoEmpadronador = row.telefono || '';
+                    }
+                }
+            } catch (eEmp) {
+                console.warn('No se pudo resolver empadronador:', eEmp);
+            }
+
             const { data: insertData, error: insertErr } = await _supabase
                 .from('reportes_riesgos')
                 .insert([{
@@ -1936,6 +2033,8 @@
                     detalle: detalleRiesgo,
                     texto_completo: texto,
                     usuario_email: correoUsuario,
+                    empadronador: nombreEmpadronador || null,
+                    telefono: telefonoEmpadronador || null,
                     layer_stamp: String(stampActual),
                     estado: 'pendiente',
                     fotos_paths: fotosPaths
@@ -2083,35 +2182,110 @@
         }
     }
 
-    function marcarReporteComoAtendido(index) {
+    async function marcarReporteComoAtendido(index) {
         const rep = dbHistorialReportes[index];
         if (!rep) return;
 
-        if (confirm(`¿Marcar como ATENDIDO el reporte de "${rep.nombreRiesgo}" en sector "${rep.sector || 'comunitario'}"?\n\nEsta acción eliminará el riesgo del mapa y restará el contador en la leyenda.`)) {
-            let marcador = stackElementos.find(el => L.stamp(el) === rep.layerStamp);
-            if (!marcador && rep.coords) {
-                const [latS, lngS] = rep.coords.split(',').map(s => parseFloat(s.trim()));
-                marcador = stackElementos.find(el => {
-                    if (el.tipoId === rep.tipoId && typeof el.getLatLng === 'function') {
-                        const ll = el.getLatLng();
-                        return Math.abs(ll.lat - latS) < 0.0001 && Math.abs(ll.lng - lngS) < 0.0001;
+        if (!confirm(`¿Marcar como ATENDIDO el reporte de "${rep.nombreRiesgo}" en sector "${rep.sector || 'comunitario'}"?\n\nEsta acción eliminará el riesgo del mapa y restará el contador en la leyenda.`)) return;
+
+        let marcador = stackElementos.find(el => L.stamp(el) === rep.layerStamp);
+        if (!marcador && rep.coords) {
+            const [latS, lngS] = rep.coords.split(',').map(s => parseFloat(s.trim()));
+            marcador = stackElementos.find(el => {
+                if (el.tipoId === rep.tipoId && typeof el.getLatLng === 'function') {
+                    const ll = el.getLatLng();
+                    return Math.abs(ll.lat - latS) < 0.0001 && Math.abs(ll.lng - lngS) < 0.0001;
+                }
+                return false;
+            });
+        }
+
+        if (marcador) {
+            eliminarObjeto(marcador);
+        } else if (rep.tipoId && contadores[rep.tipoId] !== undefined && contadores[rep.tipoId] > 0) {
+            contadores[rep.tipoId]--;
+            actualizarBadges();
+        }
+
+        dbHistorialReportes = dbHistorialReportes.filter((_, i) => i !== index);
+        // por si eliminarObjeto no lo quitó (marcador no encontrado)
+        if (rep.numeroReporte) {
+            dbHistorialReportes = dbHistorialReportes.filter(r => r.numeroReporte !== rep.numeroReporte);
+        }
+        localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+        renderizarHistorialReportes();
+        guardarProgresoMapa();
+
+        // Sincronizar con Supabase (dashboard y otros dispositivos)
+        try {
+            if (rep.numeroReporte) {
+                await _supabase.from('reportes_riesgos').update({ estado: 'atendido' }).eq('numero_reporte', rep.numeroReporte);
+            }
+            await guardarMapaEnNube(false);
+        } catch (e) {
+            console.warn('No se pudo sincronizar atendido con Supabase:', e);
+        }
+
+        alert("✅ Problema ambiental marcado como ATENDIDO con éxito.");
+    }
+
+    /** Al cargar el mapa: quita íconos y leyenda de reportes ya atendidos en el dashboard */
+    async function aplicarAtendidosDesdeSupabase() {
+        try {
+            const { data, error } = await _supabase
+                .from('reportes_riesgos')
+                .select('numero_reporte, coordenadas, layer_stamp, estado')
+                .in('estado', ['atendido', 'solucionado', 'resuelto', 'cerrado']);
+            if (error || !data || !data.length) return;
+
+            const nums = new Set(data.map(r => r.numero_reporte).filter(Boolean));
+            let huboCambio = false;
+
+            // Quitar de historial/leyenda
+            const antesH = dbHistorialReportes.length;
+            dbHistorialReportes = dbHistorialReportes.filter(h => !h.numeroReporte || !nums.has(h.numeroReporte));
+            if (dbHistorialReportes.length !== antesH) huboCambio = true;
+
+            // Quitar marcadores del mapa
+            const aEliminar = [];
+            stackElementos.forEach(el => {
+                if (el.numeroReporte && nums.has(el.numeroReporte)) {
+                    aEliminar.push(el);
+                    return;
+                }
+                // por coordenadas
+                if (typeof el.getLatLng === 'function') {
+                    const ll = el.getLatLng();
+                    for (const r of data) {
+                        if (!r.coordenadas || !r.coordenadas.includes(',')) continue;
+                        const [la, ln] = r.coordenadas.split(',').map(s => parseFloat(s.trim()));
+                        if (isNaN(la) || isNaN(ln)) continue;
+                        if (Math.abs(ll.lat - la) < 0.0002 && Math.abs(ll.lng - ln) < 0.0002 && el.fueReportado) {
+                            aEliminar.push(el);
+                            break;
+                        }
                     }
-                    return false;
-                });
-            }
+                }
+            });
+            aEliminar.forEach(el => {
+                huboCambio = true;
+                // eliminar sin confirmación extra
+                if (el.tipoId && contadores[el.tipoId] !== undefined && contadores[el.tipoId] > 0) contadores[el.tipoId]--;
+                if (el._decoradorFlechas) map.removeLayer(el._decoradorFlechas);
+                map.removeLayer(el);
+                stackElementos = stackElementos.filter(i => i !== el);
+            });
 
-            if (marcador) {
-                eliminarObjeto(marcador);
-            } else if (rep.tipoId && contadores[rep.tipoId] !== undefined && contadores[rep.tipoId] > 0) {
-                contadores[rep.tipoId]--;
+            if (huboCambio) {
                 actualizarBadges();
+                localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+                renderizarHistorialReportes();
+                guardarProgresoMapa();
+                // persistir geometría limpia en la nube
+                try { await guardarMapaEnNube(false); } catch (e) {}
             }
-
-            dbHistorialReportes.splice(index, 1);
-            localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
-            renderizarHistorialReportes();
-            guardarProgresoMapa();
-            alert("✅ Problema ambiental marcado como ATENDIDO con éxito.");
+        } catch (e) {
+            console.warn('aplicarAtendidosDesdeSupabase:', e);
         }
     }
 
@@ -2696,6 +2870,7 @@
 
         sincronizarHistorialConMarcadores();
         renderizarHistorialReportes();
+        if (typeof aplicarAtendidosDesdeSupabase === 'function') aplicarAtendidosDesdeSupabase();
     }
 
     function aplicarDatosMapaCargado(data) {
@@ -2726,6 +2901,7 @@
         renderizarHistorialReportes();
         guardarProgresoMapa();
         enfocarMapaEnElementos();
+        if (typeof aplicarAtendidosDesdeSupabase === 'function') aplicarAtendidosDesdeSupabase();
     }
 
     async function consolidarMapasDeUsuario(correo, filas) {
@@ -3287,13 +3463,136 @@
 
     function toggleSidebar() { document.getElementById('sidebar').style.display = document.getElementById('sidebar').style.display === 'none' ? 'block' : 'none'; map.invalidateSize(); }
 
-    function irAMiUbicacion() { 
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(pos => { 
-            const lat = pos.coords.latitude, lng = pos.coords.longitude; map.setView([lat, lng], 19); 
+    function irAMiUbicacion() {
+        if (!navigator.geolocation) {
+            alert('Tu dispositivo no soporta geolocalización.');
+            return;
+        }
+        if (!map) {
+            alert('El mapa aún no está listo. Espera un momento e intenta de nuevo.');
+            return;
+        }
+
+        // Detener búsqueda anterior si sigue activa
+        if (geoWatchId != null) {
+            try { navigator.geolocation.clearWatch(geoWatchId); } catch (e) {}
+            geoWatchId = null;
+        }
+        geoMejorPrecision = Infinity;
+
+        const opciones = {
+            enableHighAccuracy: true, // fuerza GPS cuando está disponible
+            timeout: 25000,           // más tiempo en zonas rurales
+            maximumAge: 0             // no usar ubicación en caché
+        };
+
+        const PRECISION_OBJETIVO_M = 25; // metros
+        const MAX_ACTUALIZACIONES = 15;
+        let actualizaciones = 0;
+
+        // Feedback visual breve en el botón flotante si existe
+        const btnLoc = document.getElementById('btnMiUbicacion') || document.querySelector('[onclick*="irAMiUbicacion"]');
+        const textoOriginalBtn = btnLoc ? btnLoc.innerHTML : '';
+        if (btnLoc) {
+            btnLoc.style.opacity = '0.7';
+            btnLoc.title = 'Buscando GPS de alta precisión…';
+        }
+
+        function pintarUbicacion(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const acc = (typeof pos.coords.accuracy === 'number' && pos.coords.accuracy > 0)
+                ? pos.coords.accuracy
+                : 100;
+
+            // Ignorar lecturas mucho peores que la mejor ya lograda
+            if (geoMejorPrecision < Infinity && acc > geoMejorPrecision * 1.6) {
+                return;
+            }
+            if (acc < geoMejorPrecision) geoMejorPrecision = acc;
+
+            const zoom = acc > 120 ? 16 : (acc > 60 ? 17 : (acc > 30 ? 18 : 19));
+            map.setView([lat, lng], zoom);
+
             if (userLocationMarker) map.removeLayer(userLocationMarker);
-            userLocationMarker = L.marker([lat, lng], { icon: L.divIcon({ className: '', html: '<div class="user-location-icon"></div>', iconSize: [20, 20] }) }).addTo(map);
-        }); 
+            if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+
+            userAccuracyCircle = L.circle([lat, lng], {
+                radius: Math.max(acc, 8),
+                color: '#B4D445',
+                fillColor: '#B4D445',
+                fillOpacity: 0.18,
+                weight: 2,
+                interactive: false
+            }).addTo(map);
+
+            const msgPrec = '±' + Math.round(acc) + ' m';
+            userLocationMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div class="user-location-icon" title="Precisión ' + msgPrec + '"></div>',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                }),
+                zIndexOffset: 2000
+            }).addTo(map);
+
+            const ayuda = acc > 50
+                ? '<br><small style="color:#888">Refinando… mantén el teléfono al aire libre unos segundos.</small>'
+                : '<br><small style="color:#6f9c2e">Buena precisión</small>';
+
+            userLocationMarker.bindPopup(
+                '📍 <b>Tu ubicación</b><br>Precisión: <b>' + msgPrec + '</b>' + ayuda
+            ).openPopup();
+        }
+
+        function onError(err) {
+            let msg = 'No se pudo obtener la ubicación.';
+            if (err && err.code === 1) msg = 'Permiso de ubicación denegado.\nActívalo en el navegador o en Ajustes del teléfono.';
+            else if (err && err.code === 2) msg = 'Sin señal de ubicación.\nSal a un lugar más abierto (cielo libre ayuda mucho en zona rural).';
+            else if (err && err.code === 3) msg = 'Tiempo de espera agotado.\nIntenta de nuevo; en zona rural puede tardar unos segundos más.';
+            alert(msg);
+            if (btnLoc) {
+                btnLoc.style.opacity = '1';
+                btnLoc.title = 'Mi ubicación';
+                if (textoOriginalBtn) btnLoc.innerHTML = textoOriginalBtn;
+            }
+        }
+
+        function finalizarSeguimiento() {
+            if (geoWatchId != null) {
+                try { navigator.geolocation.clearWatch(geoWatchId); } catch (e) {}
+                geoWatchId = null;
+            }
+            if (btnLoc) {
+                btnLoc.style.opacity = '1';
+                btnLoc.title = 'Mi ubicación (precisión ±' + (geoMejorPrecision < Infinity ? Math.round(geoMejorPrecision) + ' m' : '—') + ')';
+                if (textoOriginalBtn) btnLoc.innerHTML = textoOriginalBtn;
+            }
+        }
+
+        // 1) Lectura inmediata
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            pintarUbicacion(pos);
+        }, onError, opciones);
+
+        // 2) Seguimiento para refinar (clave en rural / primera lectura mala)
+        geoWatchId = navigator.geolocation.watchPosition(function (pos) {
+            actualizaciones++;
+            pintarUbicacion(pos);
+            if (pos.coords.accuracy && pos.coords.accuracy <= PRECISION_OBJETIVO_M) {
+                finalizarSeguimiento();
+            } else if (actualizaciones >= MAX_ACTUALIZACIONES) {
+                finalizarSeguimiento();
+            }
+        }, function (err) {
+            // Si watch falla pero getCurrent ya pintó, no molestar de nuevo salvo permiso
+            if (err && err.code === 1) onError(err);
+            finalizarSeguimiento();
+        }, opciones);
+
+        // 3) Corte de seguridad a los 45 s
+        setTimeout(finalizarSeguimiento, 45000);
     }
 
     function abrirPopupDesdeFlecha(linea, ev) {
@@ -3474,16 +3773,19 @@
         stackElementos.push(obj); guardarProgresoMapa();
     }
 
-    function eliminarObjeto(obj) {
+    async function eliminarObjeto(obj) {
         if (!obj) return;
 
+        const eraReportado = !!(obj.fueReportado && esRiesgoAmbiental(obj.tipoId));
+        const numRep = obj.numeroReporte || '';
+
         // Solo pedir advertencia si es un riesgo ambiental YA REPORTADO
-        if (obj.fueReportado && esRiesgoAmbiental(obj.tipoId)) {
+        if (eraReportado) {
             const nombreRiesgo = obtenerNombreRiesgo(obj.tipoId, obj);
             const confirmar = confirm(
                 "⚠️ ADVERTENCIA: Este riesgo YA FUE REPORTADO.\n\n" +
                 "Riesgo: " + nombreRiesgo + "\n\n" +
-                "Al eliminarlo se quitará del mapa y también se eliminará automáticamente del Historial de Reportes.\n\n" +
+                "Al eliminarlo se quitará del mapa, de la leyenda y también de los reportes en el dashboard (riesgos reportados / solucionados).\n\n" +
                 "¿Deseas continuar?"
             );
             if (!confirmar) return;
@@ -3494,9 +3796,13 @@
         if (obj.tipoId === 'recicladores') alternarLeyendaNormal(); 
         if (obj._decoradorFlechas) map.removeLayer(obj._decoradorFlechas);
         
-        // Eliminar automáticamente del historial de reportes (si estaba reportado)
+        // Eliminar del historial local de reportes
         const stampObj = L.stamp(obj);
-        dbHistorialReportes = dbHistorialReportes.filter(r => r.layerStamp !== stampObj);
+        dbHistorialReportes = dbHistorialReportes.filter(r => {
+            if (r.layerStamp === stampObj) return false;
+            if (numRep && r.numeroReporte === numRep) return false;
+            return true;
+        });
         localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
         renderizarHistorialReportes();
 
@@ -3504,6 +3810,20 @@
         stackElementos = stackElementos.filter(i => i !== obj); 
         objetoSeleccionado = null; 
         guardarProgresoMapa();
+
+        // Si estaba reportado → borrar también de reportes_riesgos (dashboard)
+        if (eraReportado && numRep) {
+            try {
+                const { error } = await _supabase
+                    .from('reportes_riesgos')
+                    .delete()
+                    .eq('numero_reporte', numRep);
+                if (error) console.warn('No se pudo borrar de reportes_riesgos:', error.message);
+                else console.log('Reporte eliminado también de reportes_riesgos:', numRep);
+            } catch (e) {
+                console.warn('Error eliminando reporte en Supabase:', e);
+            }
+        }
     }
 
     function deseleccionarTodo() { if (objetoSeleccionado && objetoSeleccionado.disableEdit) objetoSeleccionado.disableEdit(); objetoSeleccionado = null; }
