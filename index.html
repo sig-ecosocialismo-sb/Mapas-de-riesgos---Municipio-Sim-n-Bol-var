@@ -1933,6 +1933,94 @@
     let dbHistorialReportes = [];
     let fotosReporteActual = [null, null, null]; // Guarda los 3 archivos en memoria temporal sin subirlos a Supabase
 
+    /* === Historial de reportes POR USUARIO (Supabase + localStorage aislado) === */
+    function obtenerEmailUsuarioActivo() {
+        const e = (typeof emailPropietarioMapaActual !== 'undefined' && emailPropietarioMapaActual)
+            ? emailPropietarioMapaActual
+            : (localStorage.getItem('user_email_active') || '');
+        return String(e || '').trim().toLowerCase();
+    }
+    function claveHistorialLocal() {
+        const email = obtenerEmailUsuarioActivo();
+        return email ? ('historial_reportes_sig_' + email) : 'historial_reportes_sig_anon';
+    }
+    function guardarHistorialLocal() {
+        try {
+            localStorage.setItem(claveHistorialLocal(), JSON.stringify(dbHistorialReportes || []));
+            // Eliminar solo la clave global antigua que mezclaba reportes de todos los usuarios
+            try { localStorage.removeItem('historial_reportes_sig'); } catch (e0) {}
+        } catch (e) { console.warn('guardarHistorialLocal:', e); }
+    }
+    function leerHistorialLocal() {
+        try {
+            const raw = localStorage.getItem(claveHistorialLocal());
+            if (raw) {
+                const arr = JSON.parse(raw);
+                return Array.isArray(arr) ? arr : [];
+            }
+        } catch (e) {}
+        return [];
+    }
+    function mapearFilaReporteSupabase(r) {
+        if (!r) return null;
+        const est = String(r.estado || 'pendiente').toLowerCase();
+        if (['atendido', 'solucionado', 'resuelto', 'cerrado'].includes(est)) return null;
+        let stamp = null;
+        if (r.layer_stamp != null && r.layer_stamp !== '') {
+            const n = parseInt(r.layer_stamp, 10);
+            stamp = isNaN(n) ? null : n;
+        }
+        return {
+            layerStamp: stamp,
+            numeroReporte: r.numero_reporte || '',
+            tipoId: r.tipo_id || null,
+            nombreRiesgo: r.tipo_riesgo || 'Riesgo ambiental',
+            comuna: r.comuna || '',
+            sector: r.sector || '',
+            coords: r.coordenadas || '',
+            urgencia: r.nivel_urgencia || 'REPORTADO',
+            referencia: r.referencia || '',
+            detalleRiesgo: r.detalle || '',
+            observacion: r.detalle || '',
+            fotosAdjuntadas: 3,
+            fecha: r.created_at
+                ? new Date(r.created_at).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })
+                : '',
+            textoCompleto: r.texto_completo || '',
+            reporteId: r.id || null,
+            usuarioEmail: (r.usuario_email || '').toLowerCase()
+        };
+    }
+    async function cargarHistorialDesdeSupabase() {
+        const correo = obtenerEmailUsuarioActivo();
+        if (!correo) {
+            dbHistorialReportes = [];
+            renderizarHistorialReportes();
+            return;
+        }
+        try {
+            if (typeof _supabase === 'undefined' || !_supabase) {
+                dbHistorialReportes = leerHistorialLocal();
+                renderizarHistorialReportes();
+                return;
+            }
+            const { data, error } = await _supabase
+                .from('reportes_riesgos')
+                .select('*')
+                .eq('usuario_email', correo)
+                .order('id', { ascending: false });
+            if (error) throw error;
+            const mapeados = (data || []).map(mapearFilaReporteSupabase).filter(Boolean);
+            dbHistorialReportes = mapeados;
+            guardarHistorialLocal();
+            renderizarHistorialReportes();
+        } catch (e) {
+            console.warn('cargarHistorialDesdeSupabase (usando caché local del usuario):', e);
+            dbHistorialReportes = leerHistorialLocal();
+            renderizarHistorialReportes();
+        }
+    }
+
     const adminPermitidos = [{ user: "yetzonmora@gmail.com", pass: "32568263y" }];
 
     const listaComunas = [
@@ -2676,7 +2764,8 @@
             observacion: (referencia ? `Ref: ${referencia}. ` : '') + detalleRiesgo,
             fotosAdjuntadas: 3,
             fecha: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            textoCompleto: texto
+            textoCompleto: texto,
+            usuarioEmail: obtenerEmailUsuarioActivo()
         };
 
         if (existeIdx >= 0) {
@@ -2685,7 +2774,7 @@
             dbHistorialReportes.unshift(itemHistorial);
         }
 
-        localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+        guardarHistorialLocal();
         renderizarHistorialReportes();
         guardarProgresoMapa();
 
@@ -2782,7 +2871,7 @@
                 if (idxH >= 0) {
                     dbHistorialReportes[idxH].reporteId = insertData.id;
                     dbHistorialReportes[idxH].numeroReporte = numReporte;
-                    localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+                    guardarHistorialLocal();
                     renderizarHistorialReportes();
                 }
             } catch (eId) { console.warn('No se pudo guardar reporteId local:', eId); }
@@ -2829,31 +2918,29 @@
 
     /* === SINCRONIZAR MARCADORES DEL MAPA CON EL HISTORIAL === */
     function sincronizarHistorialConMarcadores() {
+        // Solo actualiza layerStamp de entradas YA existentes del usuario actual.
+        // Nunca inventa reportes fantasma ni copia historial de otros usuarios.
+        const emailActivo = obtenerEmailUsuarioActivo();
+        dbHistorialReportes = (dbHistorialReportes || []).filter(r => {
+            if (!r) return false;
+            if (r.usuarioEmail && emailActivo && r.usuarioEmail.toLowerCase() !== emailActivo) return false;
+            return true;
+        });
         stackElementos.forEach(capa => {
-            if (capa.fueReportado && esRiesgoAmbiental(capa.tipoId)) {
-                const stamp = L.stamp(capa);
-                const yaEsta = dbHistorialReportes.some(r => r.layerStamp === stamp);
-                if (!yaEsta) {
-                    let coords = "";
-                    if (typeof capa.getLatLng === 'function') {
-                        const ll = capa.getLatLng();
-                        coords = `${ll.lat.toFixed(6)}, ${ll.lng.toFixed(6)}`;
-                    }
-                    dbHistorialReportes.push({
-                        layerStamp: stamp,
-                        numeroReporte: capa.numeroReporte || generarNumeroReporteUnico(),
-                        tipoId: capa.tipoId,
-                        nombreRiesgo: obtenerNombreRiesgo(capa.tipoId, capa),
-                        comuna: document.getElementById('selectComuna').value || "",
-                        sector: capa.sectorReportado || document.getElementById('infoSector').value || "",
-                        coords: coords,
-                        urgencia: "MEDIO 🟡",
-                        observacion: capa.especificacionDiscapacidad || "",
-                        fotosAdjuntadas: 3,
-                        fecha: new Date().toLocaleDateString()
-                    });
-                }
+            if (!capa || !capa.fueReportado) return;
+            const num = capa.numeroReporte || '';
+            if (!num) return;
+            const stamp = L.stamp(capa);
+            const idx = dbHistorialReportes.findIndex(r =>
+                (r.numeroReporte && r.numeroReporte === num) || r.layerStamp === stamp
+            );
+            if (idx >= 0) {
+                dbHistorialReportes[idx].layerStamp = stamp;
+                if (capa.tipoId) dbHistorialReportes[idx].tipoId = capa.tipoId;
+                if (capa.sectorReportado) dbHistorialReportes[idx].sector = capa.sectorReportado;
             }
+            // Si el marcador está reportado pero no hay fila en el historial del usuario,
+            // NO se agrega aquí: el historial viene solo de Supabase (reportes_riesgos) o del envío del propio usuario.
         });
     }
 
@@ -2957,7 +3044,7 @@
         if (rep.numeroReporte) {
             dbHistorialReportes = dbHistorialReportes.filter(r => r.numeroReporte !== rep.numeroReporte);
         }
-        localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+        guardarHistorialLocal();
         renderizarHistorialReportes();
         guardarProgresoMapa();
 
@@ -3048,10 +3135,13 @@
     /** Al cargar el mapa: quita íconos y leyenda de reportes ya atendidos en el dashboard */
     async function aplicarAtendidosDesdeSupabase() {
         try {
-            const { data, error } = await _supabase
+            const correoAt = obtenerEmailUsuarioActivo();
+            let qAt = _supabase
                 .from('reportes_riesgos')
-                .select('numero_reporte, coordenadas, layer_stamp, estado')
+                .select('numero_reporte, coordenadas, layer_stamp, estado, usuario_email')
                 .in('estado', ['atendido', 'solucionado', 'resuelto', 'cerrado']);
+            if (correoAt) qAt = qAt.eq('usuario_email', correoAt);
+            const { data, error } = await qAt;
             if (error || !data || !data.length) return;
 
             const nums = new Set(data.map(r => r.numero_reporte).filter(Boolean));
@@ -3094,7 +3184,7 @@
 
             if (huboCambio) {
                 actualizarBadges();
-                localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+                guardarHistorialLocal();
                 renderizarHistorialReportes();
                 guardarProgresoMapa();
                 // persistir geometría limpia en la nube
@@ -3115,7 +3205,7 @@
         if (!confirm("⚠️ Esto borrará TODOS los elementos de tu mapa actual (polígonos, íconos, líneas, antecedentes). No se puede deshacer. ¿Deseas continuar?")) return;
         limpiarMapaCompletamente();
         dbHistorialReportes = [];
-        localStorage.removeItem('historial_reportes_sig');
+        try { localStorage.removeItem(claveHistorialLocal()); localStorage.removeItem('historial_reportes_sig'); } catch (eClr) {}
         renderizarHistorialReportes();
         const correoUsuario = emailPropietarioMapaActual || localStorage.getItem('user_email_active');
         if (!correoUsuario) return;
@@ -3405,7 +3495,10 @@
         }
 
         if (geoJSONData.historialReportes && Array.isArray(geoJSONData.historialReportes)) {
-            dbHistorialReportes = geoJSONData.historialReportes;
+            const emailAct = obtenerEmailUsuarioActivo();
+            dbHistorialReportes = geoJSONData.historialReportes.filter(r =>
+                !r || !r.usuarioEmail || !emailAct || String(r.usuarioEmail).toLowerCase() === emailAct
+            );
         }
 
         L.geoJSON(geoJSONData, {
@@ -3724,7 +3817,7 @@
         const consejosComunales = obtenerListaConsejosDesdeUI();
         if (objetoSeleccionado && objetoSeleccionado.tipoId === 'recicladores') objetoSeleccionado.datosReciclador = capturarCamposReciclador();
         
-        localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+        guardarHistorialLocal();
 
         const datosCompletos = {
             infoTerritorial: {
@@ -3797,18 +3890,32 @@
                 actualizarInputsVulnerabilidadManual();
             }
             if(data.arbolPredominante) document.getElementById('inputArbolPredominante').value = data.arbolPredominante;
-            if(data.historialReportes) { dbHistorialReportes = data.historialReportes; }
+            // historialReportes del progreso local solo si es del mismo usuario (se recarga luego desde Supabase)
+            if (data.historialReportes && Array.isArray(data.historialReportes)) {
+                const emailAct = obtenerEmailUsuarioActivo();
+                dbHistorialReportes = data.historialReportes.filter(r =>
+                    !r.usuarioEmail || !emailAct || String(r.usuarioEmail).toLowerCase() === emailAct
+                );
+            }
             if(data.elementos && data.elementos.length > 0) restaurarDatosDesdeNube({ type: "FeatureCollection", features: data.elementos });
         }
 
-        const repLocal = localStorage.getItem('historial_reportes_sig');
-        if (repLocal) {
-            try { dbHistorialReportes = JSON.parse(repLocal); } catch(e){}
+        // Preferir historial aislado por usuario; nunca la clave global antigua
+        const localUserHist = leerHistorialLocal();
+        if (localUserHist.length) {
+            dbHistorialReportes = localUserHist;
         }
 
         sincronizarHistorialConMarcadores();
         renderizarHistorialReportes();
-        if (typeof aplicarAtendidosDesdeSupabase === 'function') aplicarAtendidosDesdeSupabase();
+        if (typeof cargarHistorialDesdeSupabase === 'function') {
+            cargarHistorialDesdeSupabase().then(function () {
+                sincronizarHistorialConMarcadores();
+                if (typeof aplicarAtendidosDesdeSupabase === 'function') aplicarAtendidosDesdeSupabase();
+            });
+        } else if (typeof aplicarAtendidosDesdeSupabase === 'function') {
+            aplicarAtendidosDesdeSupabase();
+        }
     }
 
     function aplicarDatosMapaCargado(data) {
@@ -3837,16 +3944,21 @@
             restaurarDatosDesdeNube(data.geometria_mapa);
         }
 
-        const repLocal = localStorage.getItem('historial_reportes_sig');
-        if (repLocal && (!dbHistorialReportes || dbHistorialReportes.length === 0)) {
-            try { dbHistorialReportes = JSON.parse(repLocal); } catch(e){}
-        }
-
+        // Historial: solo del propietario del mapa (Supabase), no localStorage global
+        dbHistorialReportes = [];
         sincronizarHistorialConMarcadores();
         renderizarHistorialReportes();
         guardarProgresoMapa();
         enfocarMapaEnElementos();
-        if (typeof aplicarAtendidosDesdeSupabase === 'function') aplicarAtendidosDesdeSupabase();
+        if (typeof cargarHistorialDesdeSupabase === 'function') {
+            cargarHistorialDesdeSupabase().then(function () {
+                sincronizarHistorialConMarcadores();
+                renderizarHistorialReportes();
+                if (typeof aplicarAtendidosDesdeSupabase === 'function') aplicarAtendidosDesdeSupabase();
+            });
+        } else if (typeof aplicarAtendidosDesdeSupabase === 'function') {
+            aplicarAtendidosDesdeSupabase();
+        }
     }
 
     async function consolidarMapasDeUsuario(correo, filas) {
@@ -3919,7 +4031,9 @@
                 alert(`Se detectaron ${data.length} mapas de sectores anteriores para tu correo. Se unificaron automáticamente en un solo mapa comunal.`);
             } else {
                 limpiarMapaCompletamente();
+                dbHistorialReportes = [];
                 renderizarHistorialReportes();
+                if (typeof cargarHistorialDesdeSupabase === 'function') await cargarHistorialDesdeSupabase();
             }
         } catch (e) { console.error(e); }
     }
@@ -4394,8 +4508,11 @@
 
     window.addEventListener('load', async function() {
         const datos = localStorage.getItem('dbVoceros_SIG'); if (datos) { dbVoceros = JSON.parse(datos); actualizarTablaVoceros(); }
+        dbHistorialReportes = leerHistorialLocal();
         renderizarHistorialReportes();
         cargarRiesgosPersonalizados();
+        // Cargar historial real del usuario desde Supabase (tabla reportes_riesgos)
+        if (typeof cargarHistorialDesdeSupabase === 'function') cargarHistorialDesdeSupabase();
 
         if (localStorage.getItem('sesion_activa') === 'true') {
             document.getElementById('pantalla-registro').style.display = 'none'; document.getElementById('sistema-principal').style.display = 'flex';
@@ -5059,7 +5176,7 @@
             if (numRep && r.numeroReporte === numRep) return false;
             return true;
         });
-        localStorage.setItem('historial_reportes_sig', JSON.stringify(dbHistorialReportes));
+        guardarHistorialLocal();
         renderizarHistorialReportes();
 
         try { map.removeLayer(obj); } catch (e) {}
