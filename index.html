@@ -1249,7 +1249,7 @@
             .controles-mapa-horiz, .zoom-preciso-panel, #indicador-autoguardado, #toast-sig,
             #btnVolverAdmin, #panel-admin-comunas, #panel-voceros-lista,
             #contenedor-mapas-realizados, #desplegable-riesgos-trazado,
-            #btnDibujo, #btnLinea, #btnEvacuacion,
+            #btnDibujo, #btnEvacuacion,
             .btn-acceder, .btn-add-hist, .btn-del-hist,
             input[type="file"] {
                 display: none !important;
@@ -1619,7 +1619,6 @@
                 <h4>📐 Delimitación Técnico</h4>
                 <div style="border-radius: 8px; background: #111; padding: 10px;">
                     <button id="btnDibujo" class="btn-mapa" onclick="iniciarTrazado('pol')">📐 TRAZAR POLÍGONO / RIESGO</button>
-                    <button id="btnLinea" class="btn-mapa" onclick="iniciarTrazado('line')">〰️ LÍNEA / ARROYO / CANAL</button>
                     <button id="btnEvacuacion" class="btn-mapa" onclick="iniciarTrazado('evac')">🟩 VÍA DE EVACUACIÓN</button>
 
                     <div id="desplegable-riesgos-trazado">
@@ -2337,16 +2336,7 @@
         });
         if (encontrados > 0) {
             if (typeof mostrarToast === 'function') mostrarToast('🔦 ' + encontrados + ' en el mapa');
-            // Enfocar el mapa en los elementos resaltados
-            try {
-                if (capasResaltadas.length && map) {
-                    const grupo = L.featureGroup(capasResaltadas);
-                    const b = grupo.getBounds();
-                    if (b && b.isValid && b.isValid()) {
-                        map.fitBounds(b.pad(0.35), { maxZoom: Math.max(map.getZoom(), 16), animate: true });
-                    }
-                }
-            } catch (eFit) {}
+            // NO mover el mapa: solo iluminar/resaltar (el usuario permanece donde estaba)
         } else if (typeof mostrarToast === 'function') {
             mostrarToast('Sin elementos de este tipo aún', 'aviso');
         }
@@ -3906,6 +3896,12 @@
 
                 layer.addTo(map);
                 stackElementos.push(layer);
+                if (layer.tipoId === 'poligono_riesgo') {
+                    try {
+                        if (layer.options) layer.options.pane = 'panePoligonos';
+                        if (typeof layer.bringToBack === 'function') layer.bringToBack();
+                    } catch (eB) {}
+                }
             },
             style: function (feature) { 
                 if (feature.properties.tipoId === 'ruta_evacuacion') {
@@ -3921,10 +3917,18 @@
                     };
                 }
                 let opacidadRellenoDefecto = feature.properties.fillOpacity !== undefined ? feature.properties.fillOpacity : 0.4;
-                return { color: feature.properties.color || "#B4D445", fillColor: feature.properties.color || "#B4D445", fillOpacity: opacidadRellenoDefecto, weight: 4 }; 
+                const esPol = (feature.properties.tipoId === 'poligono_riesgo');
+                return {
+                    color: feature.properties.color || "#B4D445",
+                    fillColor: feature.properties.color || "#B4D445",
+                    fillOpacity: opacidadRellenoDefecto,
+                    weight: 4,
+                    pane: esPol ? 'panePoligonos' : 'overlayPane'
+                }; 
             }
         });
         actualizarBadges();
+        try { asegurarPoligonosAlFondo(); } catch (eZ) {}
     }
 
     function alternarRellenoPoligonoEnVivo(idCapa, checked) {
@@ -4223,6 +4227,7 @@
         sincronizarHistorialConMarcadores();
         renderizarHistorialReportes();
         guardarProgresoMapa();
+        try { asegurarPoligonosAlFondo(); } catch (eZ) {}
         enfocarMapaEnElementos();
         if (typeof cargarHistorialDesdeSupabase === 'function') {
             cargarHistorialDesdeSupabase().then(function () {
@@ -4312,23 +4317,138 @@
         } catch (e) { console.error(e); }
     }
 
+
+    /** Envía todos los polígonos al fondo del mapa para que líneas, vías e iconos capturen los clics encima. */
+    function asegurarPoligonosAlFondo() {
+        if (!map) return;
+        try {
+            (stackElementos || []).forEach(function (el) {
+                if (!el) return;
+                const id = el.tipoId || '';
+                if (id === 'poligono_riesgo') {
+                    try {
+                        if (typeof el.bringToBack === 'function') el.bringToBack();
+                    } catch (e) {}
+                }
+            });
+            // Líneas y vías por encima de polígonos
+            (stackElementos || []).forEach(function (el) {
+                if (!el) return;
+                const id = el.tipoId || '';
+                if (id === 'ruta_evacuacion' || (typeof esLineaTecnica === 'function' && esLineaTecnica(id)) || (id && String(id).indexOf('lin_') === 0)) {
+                    try {
+                        if (typeof el.bringToFront === 'function') el.bringToFront();
+                    } catch (e) {}
+                }
+            });
+        } catch (e) { console.warn('asegurarPoligonosAlFondo:', e); }
+    }
+
     function enfocarMapaEnElementos() {
         if (!map) return;
-        if (stackElementos.length > 0) {
-            const poligonoSector = stackElementos.find(el => {
-                const id = el.tipoId || (el.feature && el.feature.properties ? el.feature.properties.tipoId : null);
-                return id === 'poligono_riesgo';
-            });
+        const centroRef = L.latLng(10.136, -64.686);
 
-            if (poligonoSector && typeof poligonoSector.getBounds === 'function') {
-                map.fitBounds(poligonoSector.getBounds(), { padding: [30, 30] });
-            } else {
-                const grupoVirtual = L.featureGroup(stackElementos);
-                map.fitBounds(grupoVirtual.getBounds(), { padding: [50, 50], maxZoom: 18 });
-            }
-        } else {
+        if (!stackElementos || stackElementos.length === 0) {
             map.setView([10.136, -64.686], 15);
+            return;
         }
+
+        // 1) Prioridad: polígonos de riesgo → el más cercano al centro de referencia
+        const poligonos = stackElementos.filter(el => {
+            if (!el) return false;
+            const id = el.tipoId || (el.feature && el.feature.properties ? el.feature.properties.tipoId : null);
+            return id === 'poligono_riesgo' && typeof el.getBounds === 'function';
+        });
+
+        if (poligonos.length > 0) {
+            let mejor = poligonos[0];
+            let distMin = Infinity;
+            poligonos.forEach(function (pol) {
+                try {
+                    const c = pol.getBounds().getCenter();
+                    const d = centroRef.distanceTo(c);
+                    if (d < distMin) { distMin = d; mejor = pol; }
+                } catch (e) {}
+            });
+            try {
+                map.fitBounds(mejor.getBounds(), { padding: [30, 30], maxZoom: 18 });
+            } catch (e) {
+                try { map.fitBounds(mejor.getBounds(), { padding: [30, 30] }); } catch (e2) {}
+            }
+            return;
+        }
+
+        // 2) Sin polígonos: ir a la mayor concentración de iconos (marcadores)
+        const marcadores = stackElementos.filter(el => {
+            if (!el) return false;
+            try {
+                return typeof el.getLatLng === 'function' && !!(el.getLatLng());
+            } catch (e) { return false; }
+        });
+
+        if (marcadores.length > 0) {
+            // Cuadrícula ~150 m para estimar densidad
+            const cellDeg = 0.0015; // ~167 m en lat
+            const buckets = {};
+            marcadores.forEach(function (m) {
+                try {
+                    const ll = m.getLatLng();
+                    const kx = Math.floor(ll.lat / cellDeg);
+                    const ky = Math.floor(ll.lng / cellDeg);
+                    const key = kx + ',' + ky;
+                    if (!buckets[key]) buckets[key] = [];
+                    buckets[key].push(ll);
+                } catch (e) {}
+            });
+            let mejorKey = null;
+            let maxCount = 0;
+            Object.keys(buckets).forEach(function (k) {
+                if (buckets[k].length > maxCount) {
+                    maxCount = buckets[k].length;
+                    mejorKey = k;
+                }
+            });
+            if (mejorKey && buckets[mejorKey].length) {
+                const pts = buckets[mejorKey];
+                // Expandir con vecinos de celdas adyacentes si hay pocos
+                const parts = mejorKey.split(',');
+                const bx = parseInt(parts[0], 10);
+                const by = parseInt(parts[1], 10);
+                const grupoPts = pts.slice();
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nk = (bx + dx) + ',' + (by + dy);
+                        if (buckets[nk]) buckets[nk].forEach(function (p) { grupoPts.push(p); });
+                    }
+                }
+                try {
+                    const grupo = L.featureGroup(grupoPts.map(function (p) { return L.marker(p); }));
+                    const b = grupo.getBounds();
+                    if (b && b.isValid()) {
+                        map.fitBounds(b.pad(0.4), { maxZoom: 18, padding: [40, 40] });
+                        return;
+                    }
+                } catch (e) {}
+            }
+            // Fallback: todos los marcadores
+            try {
+                const g = L.featureGroup(marcadores);
+                map.fitBounds(g.getBounds(), { padding: [50, 50], maxZoom: 18 });
+                return;
+            } catch (e) {}
+        }
+
+        // 3) Solo líneas u otros: ajustar a todos los elementos
+        try {
+            const grupoVirtual = L.featureGroup(stackElementos);
+            const b = grupoVirtual.getBounds();
+            if (b && b.isValid()) {
+                map.fitBounds(b, { padding: [50, 50], maxZoom: 18 });
+                return;
+            }
+        } catch (e) {}
+        map.setView([10.136, -64.686], 15);
     }
 
     function agregarFilaHistoria(anio = "", suceso = "") {
@@ -5020,6 +5140,13 @@
         if (map) return;
         const esMovilMapa = window.matchMedia('(max-width: 768px)').matches;
         map = L.map('map', { editable: true, zoomControl: false }).setView([10.136, -64.686], 18);
+        // Panel de polígonos debajo de líneas/iconos (z-index menor que overlayPane=400)
+        try {
+            if (!map.getPane('panePoligonos')) {
+                map.createPane('panePoligonos');
+                map.getPane('panePoligonos').style.zIndex = 350;
+            }
+        } catch (ePane) {}
         // Teléfono: +/− arriba derecha | Computadora: arriba izquierda (como antes)
         L.control.zoom({ position: esMovilMapa ? 'topright' : 'topleft' }).addTo(map);
         L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
@@ -5451,7 +5578,9 @@
         });
         m.on('dragend', function() { if (m.tipoId === 'recicladores') { m.datosReciclador = capturarCamposReciclador(); } guardarProgresoMapa(); });
         if (modoEspecial === 'recicladores') { alternarLeyendaRecicladores(); limpiarCamposReciclador(); document.getElementById('recCoordenadas').value = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`; m.datosReciclador = capturarCamposReciclador(); }
-        stackElementos.push(m); guardarProgresoMapa();
+        stackElementos.push(m);
+        try { asegurarPoligonosAlFondo(); } catch (eZ) {}
+        guardarProgresoMapa();
 
         // Tras colocar CUALQUIER icono: desactivar modo colocación (hay que volver a la leyenda)
         const tipoColocado = m.tipoId;
@@ -5515,6 +5644,10 @@
             let opacidadRellenoElegida = fill ? 0.4 : 0;
             obj.setStyle({ color: col, fillColor: col, fillOpacity: opacidadRellenoElegida, weight: 4 });
             obj.options.fillOpacity = opacidadRellenoElegida;
+            try {
+                if (obj.options) obj.options.pane = 'panePoligonos';
+                if (typeof obj.bringToBack === 'function') obj.bringToBack();
+            } catch (eBack) {}
 
             obj.bindPopup(generarPopupHTML(obj));
         } else {
@@ -5552,7 +5685,9 @@
                 if (modoNavegar) { deseleccionarTodo(); objetoSeleccionado = obj; obj.enableEdit(); refrescarPopup(obj); obj.openPopup(); } 
             }
         });
-        stackElementos.push(obj); guardarProgresoMapa();
+        stackElementos.push(obj);
+        try { asegurarPoligonosAlFondo(); } catch (eZ) {}
+        guardarProgresoMapa();
     }
 
     async function eliminarObjeto(obj, opciones) {
