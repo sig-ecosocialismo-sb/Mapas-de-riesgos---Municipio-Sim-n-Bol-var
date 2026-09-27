@@ -598,6 +598,32 @@
             0%, 100% { box-shadow: 0 0 0 3px rgba(180, 212, 69, 0.55), 0 0 14px rgba(180, 212, 69, 0.85); }
             50% { box-shadow: 0 0 0 9px rgba(180, 212, 69, 0.12), 0 0 26px rgba(180, 212, 69, 1); }
         }
+        /* Resaltado de líneas: el color original se mantiene; solo brilla el borde/halo verde */
+        path.polyline-resaltado-glow {
+            stroke: #B4D445 !important;
+            stroke-linecap: round !important;
+            stroke-linejoin: round !important;
+            stroke-dasharray: none !important;
+            fill: none !important;
+            pointer-events: none !important;
+            animation: pulsoLineaLeyenda 1.15s ease-in-out infinite;
+        }
+        path.polyline-resaltado-leyenda {
+            /* Línea principal: NO forzar color verde; solo un leve brillo */
+            stroke-linecap: round !important;
+            stroke-linejoin: round !important;
+            filter: drop-shadow(0 0 2px rgba(180, 212, 69, 0.55));
+        }
+        @keyframes pulsoLineaLeyenda {
+            0%, 100% {
+                stroke-opacity: 0.55;
+                filter: drop-shadow(0 0 3px #B4D445) drop-shadow(0 0 8px rgba(180, 212, 69, 0.75));
+            }
+            50% {
+                stroke-opacity: 0.95;
+                filter: drop-shadow(0 0 8px #B4D445) drop-shadow(0 0 18px rgba(180, 212, 69, 1)) drop-shadow(0 0 26px rgba(180, 212, 69, 0.65));
+            }
+        }
         .badge-marcador-reportado {
             position: absolute;
             top: -7px;
@@ -1573,6 +1599,23 @@
                 <h4>♻️ Gestión de Reciclaje</h4>
                 <button class="btn-mapa" onclick="cambiarEmoji('📦',this,'recicladores')"><div>📦 Puntos de Recicladores</div> <span class="count-badge" id="count-recicladores">0</span></button>
 
+                <h4>🌊 Hidrografía / Drenaje (líneas)</h4>
+                <div id="leyenda-lineas-hidro" style="border-radius: 8px; background: #111; padding: 8px; margin-bottom: 8px;">
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_rio_principal', this)"><div><span style="display:inline-block;width:18px;height:4px;background:#16A34A;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Ríos principales</div> <span class="count-badge" id="count-lin_rio_principal">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_rio_secundario', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#0EA5E9;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Ríos secundarios / afluentes</div> <span class="count-badge" id="count-lin_rio_secundario">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_arroyo_permanente', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#06B6D4;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Arroyos y quebradas permanentes</div> <span class="count-badge" id="count-lin_arroyo_permanente">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_quebrada_intermitente', this)"><div><span style="display:inline-block;width:18px;height:2px;background:#C084FC;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Quebradas intermitentes</div> <span class="count-badge" id="count-lin_quebrada_intermitente">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_canal_revestido', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#F59E0B;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Canales revestidos (concreto)</div> <span class="count-badge" id="count-lin_canal_revestido">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_canal_tierra', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#92400E;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Canales de tierra y zanjones</div> <span class="count-badge" id="count-lin_canal_tierra">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_canal_subterraneo', this)"><div><span style="display:inline-block;width:18px;height:2px;background:#7C3AED;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Canales subterráneos / embaulados</div> <span class="count-badge" id="count-lin_canal_subterraneo">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_canal_servidas', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#DC2626;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Canales / caños de aguas servidas</div> <span class="count-badge" id="count-lin_canal_servidas">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_drenaje_pluvial', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#2563EB;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Drenajes pluviales urbanos</div> <span class="count-badge" id="count-lin_drenaje_pluvial">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_tuberia_colector', this)"><div><span style="display:inline-block;width:18px;height:2px;background:#64748B;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Tuberías y colectores de drenaje</div> <span class="count-badge" id="count-lin_tuberia_colector">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_desague_comunitario', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#EA580C;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Desagües y descargas comunitarias</div> <span class="count-badge" id="count-lin_desague_comunitario">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_laguna_retencion', this)"><div><span style="display:inline-block;width:18px;height:4px;background:#14B8A6;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Lagunas de estabilización / retención</div> <span class="count-badge" id="count-lin_laguna_retencion">0</span></button>
+                    <button class="btn-mapa" onclick="seleccionarTipoLineaLeyenda('lin_otro', this)"><div><span style="display:inline-block;width:18px;height:3px;background:#EAB308;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>Otros (especificar)</div> <span class="count-badge" id="count-lin_otro">0</span></button>
+                </div>
+
                 <h4>📐 Delimitación Técnico</h4>
                 <div style="border-radius: 8px; background: #111; padding: 10px;">
                     <button id="btnDibujo" class="btn-mapa" onclick="iniciarTrazado('pol')">📐 TRAZAR POLÍGONO / RIESGO</button>
@@ -1597,14 +1640,37 @@
                         </div>
 
                         <div id="opciones-linea" style="display:none; flex-direction:column; gap:8px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Color (Río/Arroyo/Canal):</label>
-                                <input type="color" id="colorLinea" value="#3388ff" style="width:36px; height:24px; padding:0; cursor:pointer; border:1px solid #444;">
+                            <div class="sidebar-form-group" style="margin:0;">
+                                <label class="sidebar-label" style="color: var(--v-lim);">Tipo de línea / cauce</label>
+                                <select id="selectTipoLinea" class="sidebar-select" style="background:#222; border:1px solid #444; color:#fff; padding:6px; font-size:11px;" onchange="aplicarPresetTipoLinea(this.value)">
+                                    <option value="lin_rio_principal">🌊 Ríos principales (cauce permanente gran caudal)</option>
+                                    <option value="lin_rio_secundario">💧 Ríos secundarios y afluentes</option>
+                                    <option value="lin_arroyo_permanente">🏞️ Arroyos y quebradas permanentes</option>
+                                    <option value="lin_quebrada_intermitente">〰️ Quebradas intermitentes o estacionales</option>
+                                    <option value="lin_canal_revestido">🧱 Canales abiertos revestidos (concreto)</option>
+                                    <option value="lin_canal_tierra">🟤 Canales de tierra y zanjones</option>
+                                    <option value="lin_canal_subterraneo">🚇 Canales subterráneos, embaulados y cajones</option>
+                                    <option value="lin_canal_servidas">🚽 Canales y caños de aguas servidas</option>
+                                    <option value="lin_drenaje_pluvial">🌧️ Drenajes pluviales urbanos</option>
+                                    <option value="lin_tuberia_colector">🔧 Tuberías y colectores de drenaje</option>
+                                    <option value="lin_desague_comunitario">⬇️ Desagües y descargas comunitarias</option>
+                                    <option value="lin_laguna_retencion">🩵 Lagunas de estabilización o retención</option>
+                                    <option value="lin_otro">✏️ Otros (especificar)</option>
+                                </select>
+                            </div>
+                            <div id="campo-otro-linea" style="display:none;">
+                                <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Descripción / especificar:</label>
+                                <input type="text" id="inputDescLineaOtro" class="sidebar-input" placeholder="Ej: Acequia comunitaria, caño X…" style="margin-top:3px;">
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Grosor: <span id="valGrosorLinea">4</span>px</label>
-                                <input type="range" id="grosorLinea" min="1" max="15" step="1" value="4" style="width:120px;" oninput="document.getElementById('valGrosorLinea').innerText=this.value">
+                                <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Color:</label>
+                                <input type="color" id="colorLinea" value="#16A34A" style="width:36px; height:24px; padding:0; cursor:pointer; border:1px solid #444;">
                             </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Grosor: <span id="valGrosorLinea">8</span>px</label>
+                                <input type="range" id="grosorLinea" min="1" max="15" step="1" value="8" style="width:120px;" oninput="document.getElementById('valGrosorLinea').innerText=this.value">
+                            </div>
+                            <div style="font-size:8.5px; color:#777; line-height:1.3;">Al terminar el trazado se cuenta en la leyenda de hidrografía. Toca el tipo en la leyenda para resaltar las líneas en el mapa.</div>
                         </div>
 
                         <div id="opciones-evac" style="display:none; flex-direction:column; gap:8px;">
@@ -1726,9 +1792,11 @@
 
             <div class="controles-mapa-horiz">
                 <button class="btn-float" onclick="toggleSidebar()" title="Ocultar/Mostrar Inventario">☰</button>
-                <button id="floatMano" class="btn-float activo-float" onclick="activarMano(true)">🖐️</button>
+                <button id="floatMano" class="btn-float activo-float" onclick="activarMano(true)" title="Navegar">🖐️</button>
                 <button class="btn-float" onclick="irAMiUbicacion()" title="Mi Ubicación GPS">📍</button>
-                <button id="btnFinalizar" class="btn-float" onclick="finalizarTrazado()">✔️</button>
+                <button id="btnDeshacer" class="btn-float" onclick="deshacerAccionMapa()" title="Deshacer" style="opacity:0.45; font-size:16px;">↩️</button>
+                <button id="btnRehacer" class="btn-float" onclick="rehacerAccionMapa()" title="Rehacer" style="opacity:0.45; font-size:16px;">↪️</button>
+                <button id="btnFinalizar" class="btn-float" onclick="finalizarTrazado()" title="Finalizar trazado">✔️</button>
             </div>
             <div id="map"></div>
             <div id="indicador-autoguardado">💾 Autoguardado...</div>
@@ -2068,6 +2136,70 @@
 
     var tipoResaltadoLeyenda = null;
 
+    /* Catálogo de líneas técnicas (hidrografía / drenaje) */
+    const CATALOGO_LINEAS = {
+        lin_rio_principal: { nombre: 'Ríos principales (cauce permanente gran caudal)', color: '#16A34A', weight: 8, dashArray: null },
+        lin_rio_secundario: { nombre: 'Ríos secundarios y afluentes', color: '#0EA5E9', weight: 5, dashArray: null },
+        lin_arroyo_permanente: { nombre: 'Arroyos y quebradas permanentes', color: '#06B6D4', weight: 4, dashArray: null },
+        lin_quebrada_intermitente: { nombre: 'Quebradas intermitentes o estacionales', color: '#C084FC', weight: 3, dashArray: null },
+        lin_canal_revestido: { nombre: 'Canales abiertos revestidos (concreto)', color: '#F59E0B', weight: 5, dashArray: null },
+        lin_canal_tierra: { nombre: 'Canales de tierra y zanjones', color: '#92400E', weight: 4, dashArray: null },
+        lin_canal_subterraneo: { nombre: 'Canales subterráneos, embaulados y cajones de paso', color: '#7C3AED', weight: 4, dashArray: null },
+        lin_canal_servidas: { nombre: 'Canales y caños de aguas servidas', color: '#DC2626', weight: 4, dashArray: null },
+        lin_drenaje_pluvial: { nombre: 'Drenajes pluviales urbanos', color: '#2563EB', weight: 4, dashArray: null },
+        lin_tuberia_colector: { nombre: 'Tuberías y colectores de drenaje', color: '#64748B', weight: 3, dashArray: null },
+        lin_desague_comunitario: { nombre: 'Desagües y descargas comunitarias', color: '#EA580C', weight: 4, dashArray: null },
+        lin_laguna_retencion: { nombre: 'Lagunas de estabilización o lagunas de retención', color: '#14B8A6', weight: 6, dashArray: null },
+        lin_otro: { nombre: 'Otros (especificar)', color: '#EAB308', weight: 4, dashArray: null }
+    };
+
+    function esLineaTecnica(tipoId) {
+        return tipoId === 'linea_tecnica' || (tipoId && String(tipoId).indexOf('lin_') === 0);
+    }
+
+    function obtenerPresetLinea(tipoId) {
+        if (tipoId && CATALOGO_LINEAS[tipoId]) return CATALOGO_LINEAS[tipoId];
+        return { nombre: 'Trazado Técnico', color: '#3388ff', weight: 4, dashArray: null };
+    }
+
+    function aplicarPresetTipoLinea(tipoId) {
+        const preset = obtenerPresetLinea(tipoId);
+        const colorEl = document.getElementById('colorLinea');
+        const grosorEl = document.getElementById('grosorLinea');
+        const valG = document.getElementById('valGrosorLinea');
+        const campoOtro = document.getElementById('campo-otro-linea');
+        if (colorEl) colorEl.value = preset.color;
+        if (grosorEl) {
+            grosorEl.value = preset.weight;
+            if (valG) valG.innerText = preset.weight;
+        }
+        if (campoOtro) campoOtro.style.display = (tipoId === 'lin_otro') ? 'block' : 'none';
+    }
+
+    function seleccionarTipoLineaLeyenda(tipoId, btn) {
+        if (!tipoId) return;
+        // Segundo toque: apagar resaltado
+        if (tipoResaltadoLeyenda === tipoId) {
+            try { quitarResaltadoLeyenda(); } catch (e) {}
+            document.querySelectorAll('#leyenda-lineas-hidro .btn-mapa').forEach(b => b.classList.remove('active'));
+            return;
+        }
+        const sel = document.getElementById('selectTipoLinea');
+        if (sel) {
+            sel.value = tipoId;
+            aplicarPresetTipoLinea(tipoId);
+        }
+        document.querySelectorAll('#leyenda-lineas-hidro .btn-mapa').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        const hay = (stackElementos || []).some(c => c && c.tipoId === tipoId);
+        try { resaltarMarcadoresPorTipo(tipoId); } catch (e) {}
+        // Solo iniciar trazado si aún no hay de ese tipo (para no interrumpir el resaltado)
+        if (!hay && typeof iniciarTrazado === 'function') {
+            try { iniciarTrazado('line'); } catch (e2) {}
+            if (sel) { sel.value = tipoId; aplicarPresetTipoLinea(tipoId); }
+        }
+    }
+
     function quitarResaltadoLeyenda() {
         tipoResaltadoLeyenda = null;
         try {
@@ -2075,6 +2207,44 @@
                 el.classList.remove('resaltado-leyenda');
             });
         } catch (e) {}
+        try {
+            document.querySelectorAll('path.polyline-resaltado-leyenda').forEach(function (el) {
+                el.classList.remove('polyline-resaltado-leyenda');
+            });
+            document.querySelectorAll('path.polyline-resaltado-glow').forEach(function (el) {
+                el.classList.remove('polyline-resaltado-glow');
+            });
+        } catch (e0) {}
+        // Restaurar estilos de polilíneas resaltadas
+        try {
+            (stackElementos || []).forEach(function (capa) {
+                if (!capa) return;
+                // Quitar capa de resplandor auxiliar
+                if (capa._glowResaltado) {
+                    try { map.removeLayer(capa._glowResaltado); } catch (eg) {}
+                    capa._glowResaltado = null;
+                }
+                if (!capa._estiloAntesResaltado) return;
+                try {
+                    const el = capa._path || (capa.getElement ? capa.getElement() : null);
+                    if (el && el.classList) el.classList.remove('polyline-resaltado-leyenda');
+                } catch (eCls) {}
+                try {
+                    capa.setStyle(capa._estiloAntesResaltado);
+                } catch (e2) {}
+                capa._estiloAntesResaltado = null;
+            });
+        } catch (e3) {}
+    }
+
+    function esCapaLineaOPoligono(capa) {
+        if (!capa) return false;
+        if (typeof L !== 'undefined') {
+            if (capa instanceof L.Marker) return false;
+            if (capa instanceof L.Polyline || capa instanceof L.Polygon) return true;
+        }
+        // Fallback sin instanceof
+        return !!(capa.getLatLngs && typeof capa.getLatLngs === 'function' && typeof capa.setStyle === 'function' && !capa.getIcon);
     }
 
     function resaltarMarcadoresPorTipo(tipoId) {
@@ -2082,23 +2252,103 @@
         if (!tipoId || !map) return;
         tipoResaltadoLeyenda = tipoId;
         let encontrados = 0;
+        const capasResaltadas = [];
         (stackElementos || []).forEach(function (capa) {
             if (!capa || capa.tipoId !== tipoId) return;
             try {
-                const iconEl = capa.getElement ? capa.getElement() : (capa._icon || null);
-                if (!iconEl) return;
-                const cont = iconEl.querySelector ? iconEl.querySelector('.map-icon-container') : null;
-                if (cont) {
-                    cont.classList.add('resaltado-leyenda');
+                // 1) Líneas / polígonos PRIMERO (Polyline también tiene getElement = path SVG)
+                if (esCapaLineaOPoligono(capa)) {
+                    const opt = capa.options || {};
+                    const colorOrig = opt.color || '#3388ff';
+                    const pesoBase = parseFloat(opt.weight) || 4;
+                    capa._estiloAntesResaltado = {
+                        color: colorOrig,
+                        weight: pesoBase,
+                        opacity: opt.opacity != null ? opt.opacity : 1,
+                        dashArray: opt.dashArray || null,
+                        className: opt.className || '',
+                        fillColor: opt.fillColor,
+                        fillOpacity: opt.fillOpacity
+                    };
+                    // Halo / borde verde DETRÁS (el color original de la línea se mantiene)
+                    try {
+                        if (capa._glowResaltado) { map.removeLayer(capa._glowResaltado); }
+                        const latlngs = capa.getLatLngs();
+                        const esPol = (typeof L !== 'undefined' && capa instanceof L.Polygon) || (capa.tipoId === 'poligono_riesgo');
+                        const glowOpts = {
+                            color: '#B4D445',
+                            weight: Math.min(pesoBase + 9, 20),
+                            opacity: 0.7,
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                            interactive: false,
+                            className: 'polyline-resaltado-glow',
+                            fill: false
+                        };
+                        if (esPol) {
+                            capa._glowResaltado = L.polygon(latlngs, Object.assign({}, glowOpts, {
+                                fill: false,
+                                fillOpacity: 0,
+                                weight: Math.min(pesoBase + 8, 18)
+                            }));
+                        } else {
+                            capa._glowResaltado = L.polyline(latlngs, glowOpts);
+                        }
+                        capa._glowResaltado.addTo(map);
+                        try {
+                            const gel = capa._glowResaltado._path || (capa._glowResaltado.getElement && capa._glowResaltado.getElement());
+                            if (gel && gel.classList) gel.classList.add('polyline-resaltado-glow');
+                        } catch (eG2) {}
+                        if (capa._glowResaltado.bringToBack) capa._glowResaltado.bringToBack();
+                    } catch (eGlow) { console.warn('glow:', eGlow); }
+                    // Línea principal: MISMO color, solo un poco más gruesa + clase de brillo suave
+                    capa.setStyle({
+                        color: colorOrig,
+                        weight: pesoBase,
+                        opacity: 1,
+                        dashArray: opt.dashArray || null,
+                        className: 'polyline-resaltado-leyenda'
+                    });
+                    try {
+                        const el = capa._path || (capa.getElement && capa.getElement());
+                        if (el && el.classList) el.classList.add('polyline-resaltado-leyenda');
+                        if (capa.bringToFront) capa.bringToFront();
+                    } catch (ePath) {}
                     encontrados++;
-                } else if (iconEl.classList) {
-                    iconEl.classList.add('resaltado-leyenda');
-                    encontrados++;
+                    capasResaltadas.push(capa);
+                    return;
                 }
-            } catch (e) {}
+
+                // 2) Marcadores (iconos)
+                const iconEl = capa._icon || (capa.getElement ? capa.getElement() : null);
+                if (iconEl) {
+                    const cont = iconEl.querySelector ? iconEl.querySelector('.map-icon-container') : null;
+                    if (cont) {
+                        cont.classList.add('resaltado-leyenda');
+                        encontrados++;
+                        capasResaltadas.push(capa);
+                    } else if (iconEl.classList) {
+                        iconEl.classList.add('resaltado-leyenda');
+                        encontrados++;
+                        capasResaltadas.push(capa);
+                    }
+                }
+            } catch (e) { console.warn('resaltar:', e); }
         });
-        if (encontrados > 0 && typeof mostrarToast === 'function') {
-            mostrarToast('🔦 ' + encontrados + ' en el mapa');
+        if (encontrados > 0) {
+            if (typeof mostrarToast === 'function') mostrarToast('🔦 ' + encontrados + ' en el mapa');
+            // Enfocar el mapa en los elementos resaltados
+            try {
+                if (capasResaltadas.length && map) {
+                    const grupo = L.featureGroup(capasResaltadas);
+                    const b = grupo.getBounds();
+                    if (b && b.isValid && b.isValid()) {
+                        map.fitBounds(b.pad(0.35), { maxZoom: Math.max(map.getZoom(), 16), animate: true });
+                    }
+                }
+            } catch (eFit) {}
+        } else if (typeof mostrarToast === 'function') {
+            mostrarToast('Sin elementos de este tipo aún', 'aviso');
         }
     }
 
@@ -3387,6 +3637,7 @@
 
     function limpiarMapaCompletamente() {
         if (!map) return;
+        try { limpiarHistorialUndo(); } catch (eH) {}
         stackElementos.forEach(capa => {
             try { if (capa && typeof capa.disableEdit === 'function') capa.disableEdit(); } catch (e) {}
             try { if (capa && capa._decoradorFlechas) map.removeLayer(capa._decoradorFlechas); } catch (e) {}
@@ -3421,10 +3672,10 @@
                 <button class="btn-rename-popup" onclick="renombrarElemento(${idCapa})">✏️ RENOMBRAR</button>
                 <button class="btn-delete-popup" onclick="eliminarObjeto(objetoSeleccionado)">ELIMINAR</button>
             </div>`;
-        } else if (layer.tipoId === 'linea_tecnica') {
-            const nombre = layer.nombrePersonalizado || "Trazado Técnico";
-            const col = (layer.options && layer.options.color) || '#3388ff';
-            const gro = (layer.options && layer.options.weight) || 4;
+        } else if (esLineaTecnica(layer.tipoId)) {
+            const nombre = layer.nombrePersonalizado || obtenerPresetLinea(layer.tipoId).nombre;
+            const col = (layer.options && layer.options.color) || obtenerPresetLinea(layer.tipoId).color;
+            const gro = (layer.options && layer.options.weight) || obtenerPresetLinea(layer.tipoId).weight;
             return `<div>
                 <span class="popup-desc">${nombre}</span>
                 <div class="popup-style-row"><label>Color:</label><input type="color" value="${col}" onchange="actualizarEstiloLinea(${idCapa}, this.value, null)"></div>
@@ -3608,10 +3859,25 @@
                     layer.grosorEvac = feature.properties.grosorEvac || 6;
                     layer.setStyle({ color: layer.colorEvac, weight: 0, fill: false });
                     recrearFlechasRuta(layer);
-                } else if (layer.tipoId === 'linea_tecnica' && layer instanceof L.Polyline) {
-                    const colorLinea = feature.properties.color || "#3388ff";
-                    const grosorLinea = feature.properties.weight || 4;
-                    layer.setStyle({ color: colorLinea, weight: grosorLinea });
+                } else if (esLineaTecnica(layer.tipoId) && layer instanceof L.Polyline) {
+                    // Compatibilidad: mapas antiguos con tipoId genérico 'linea_tecnica'
+                    if (layer.tipoId === 'linea_tecnica') {
+                        layer.tipoId = feature.properties.lineaSubtipo || 'lin_otro';
+                    }
+                    const presetR = obtenerPresetLinea(layer.tipoId);
+                    const colorLinea = feature.properties.color || presetR.color || "#3388ff";
+                    const grosorLinea = feature.properties.weight || presetR.weight || 4;
+                    const dashR = feature.properties.dashArray != null ? feature.properties.dashArray : (presetR.dashArray || null);
+                    layer.setStyle({ color: colorLinea, weight: grosorLinea, dashArray: dashR, opacity: 1 });
+                    layer.options.color = colorLinea;
+                    layer.options.weight = grosorLinea;
+                    layer.options.dashArray = dashR;
+                    layer.lineaSubtipo = feature.properties.lineaSubtipo || layer.tipoId;
+                    if (!layer.nombrePersonalizado) {
+                        layer.nombrePersonalizado = feature.properties.nombrePersonalizado || feature.properties.popupContent || presetR.nombre;
+                    }
+                    if (contadores[layer.tipoId] === undefined) contadores[layer.tipoId] = 0;
+                    contadores[layer.tipoId]++;
                 }
 
                 layer.on('click', ev => {
@@ -3645,8 +3911,14 @@
                 if (feature.properties.tipoId === 'ruta_evacuacion') {
                     return { color: feature.properties.colorEvac || '#00FF00', weight: 0, fill: false };
                 }
-                if (feature.properties.tipoId === 'linea_tecnica') {
-                    return { color: feature.properties.color || "#3388ff", weight: feature.properties.weight || 4 };
+                if (esLineaTecnica(feature.properties.tipoId)) {
+                    const pr = obtenerPresetLinea(feature.properties.tipoId);
+                    return {
+                        color: feature.properties.color || pr.color || "#3388ff",
+                        weight: feature.properties.weight || pr.weight || 4,
+                        dashArray: feature.properties.dashArray != null ? feature.properties.dashArray : (pr.dashArray || null),
+                        opacity: 1
+                    };
                 }
                 let opacidadRellenoDefecto = feature.properties.fillOpacity !== undefined ? feature.properties.fillOpacity : 0.4;
                 return { color: feature.properties.color || "#B4D445", fillColor: feature.properties.color || "#B4D445", fillOpacity: opacidadRellenoDefecto, weight: 4 }; 
@@ -3776,8 +4048,10 @@
                 emojiPersonalizado: capa.emojiPersonalizado || "",
                 nivelMagnitud: capa.nivelMagnitud || ""
             };
-            if (capa.tipoId === 'linea_tecnica') {
-                props.weight = capa.options.weight || 4;
+            if (esLineaTecnica(capa.tipoId)) {
+                props.weight = (capa.options && capa.options.weight) || 4;
+                props.dashArray = (capa.options && capa.options.dashArray) || null;
+                props.lineaSubtipo = capa.lineaSubtipo || capa.tipoId;
             }
             if (capa.tipoId === 'ruta_evacuacion') {
                 props.colorEvac = capa.colorEvac || '#00FF00';
@@ -4381,6 +4655,136 @@
     var objetoSeleccionado = null, trazandoAhora = null, tipoDeTrazadoActivo = "";
     var _toastTimerSig = null;
 
+    /* === DESHACER / REHACER === */
+    var historialDeshacer = [];
+    var historialRehacer = [];
+    var _bloqueandoHistorialUndo = false;
+    var MAX_HISTORIAL_UNDO = 35;
+
+    function actualizarBotonesDeshacer() {
+        const bU = document.getElementById('btnDeshacer');
+        const bR = document.getElementById('btnRehacer');
+        if (bU) {
+            bU.style.opacity = historialDeshacer.length ? '1' : '0.4';
+            bU.style.pointerEvents = historialDeshacer.length ? 'auto' : 'none';
+            bU.title = historialDeshacer.length ? ('Deshacer (' + historialDeshacer.length + ')') : 'Deshacer';
+        }
+        if (bR) {
+            bR.style.opacity = historialRehacer.length ? '1' : '0.4';
+            bR.style.pointerEvents = historialRehacer.length ? 'auto' : 'none';
+            bR.title = historialRehacer.length ? ('Rehacer (' + historialRehacer.length + ')') : 'Rehacer';
+        }
+    }
+
+    function capturarSnapshotMapaUndo() {
+        let elementos = [];
+        try { elementos = construirElementosParaGuardar(); } catch (e) { elementos = []; }
+        return {
+            elementos: elementos,
+            contadores: JSON.parse(JSON.stringify(contadores || {})),
+            vulnerabilidadesManual: JSON.parse(JSON.stringify(vulnerabilidadesManual || {}))
+        };
+    }
+
+    function registrarEstadoParaDeshacer() {
+        if (_bloqueandoHistorialUndo) return;
+        try {
+            historialDeshacer.push(capturarSnapshotMapaUndo());
+            if (historialDeshacer.length > MAX_HISTORIAL_UNDO) historialDeshacer.shift();
+            historialRehacer = [];
+            actualizarBotonesDeshacer();
+        } catch (e) { console.warn('registrarEstadoParaDeshacer:', e); }
+    }
+
+    function aplicarSnapshotMapaUndo(snap) {
+        if (!snap || !map) return;
+        _bloqueandoHistorialUndo = true;
+        try {
+            try { quitarResaltadoLeyenda(); } catch (e0) {}
+            // Quitar capas actuales
+            (stackElementos || []).slice().forEach(function (capa) {
+                try {
+                    if (capa && capa._decoradorFlechas) map.removeLayer(capa._decoradorFlechas);
+                } catch (e1) {}
+                try {
+                    if (capa && capa._glowResaltado) map.removeLayer(capa._glowResaltado);
+                } catch (e1b) {}
+                try { if (capa) map.removeLayer(capa); } catch (e2) {}
+            });
+            stackElementos = [];
+            objetoSeleccionado = null;
+            for (let k in contadores) contadores[k] = 0;
+            if (snap.vulnerabilidadesManual) {
+                for (let k in vulnerabilidadesManual) {
+                    if (snap.vulnerabilidadesManual[k] !== undefined) {
+                        vulnerabilidadesManual[k] = parseInt(snap.vulnerabilidadesManual[k]) || 0;
+                    }
+                }
+                try { actualizarInputsVulnerabilidadManual(); } catch (eV) {}
+            }
+            const feats = snap.elementos || [];
+            if (feats.length) {
+                restaurarDatosDesdeNube({ type: 'FeatureCollection', features: feats });
+            }
+            // Restaurar contadores exactos del snapshot (evitar dobles al cargar líneas)
+            if (snap.contadores) {
+                for (let k in contadores) contadores[k] = 0;
+                for (let k in snap.contadores) {
+                    contadores[k] = parseInt(snap.contadores[k]) || 0;
+                }
+            }
+            actualizarBadges();
+            try { guardarProgresoMapa(); } catch (eG) {}
+        } catch (e) {
+            console.error('aplicarSnapshotMapaUndo:', e);
+        } finally {
+            _bloqueandoHistorialUndo = false;
+            actualizarBotonesDeshacer();
+        }
+    }
+
+    function deshacerAccionMapa() {
+        if (!esMapaEditable()) return;
+        if (!historialDeshacer.length) {
+            if (typeof mostrarToast === 'function') mostrarToast('Nada que deshacer', 'aviso');
+            return;
+        }
+        try {
+            historialRehacer.push(capturarSnapshotMapaUndo());
+            const prev = historialDeshacer.pop();
+            aplicarSnapshotMapaUndo(prev);
+            if (typeof mostrarToast === 'function') mostrarToast('↩️ Deshecho');
+        } catch (e) {
+            console.error(e);
+            if (typeof mostrarToast === 'function') mostrarToast('No se pudo deshacer', 'error');
+        }
+        actualizarBotonesDeshacer();
+    }
+
+    function rehacerAccionMapa() {
+        if (!esMapaEditable()) return;
+        if (!historialRehacer.length) {
+            if (typeof mostrarToast === 'function') mostrarToast('Nada que rehacer', 'aviso');
+            return;
+        }
+        try {
+            historialDeshacer.push(capturarSnapshotMapaUndo());
+            const next = historialRehacer.pop();
+            aplicarSnapshotMapaUndo(next);
+            if (typeof mostrarToast === 'function') mostrarToast('↪️ Rehecho');
+        } catch (e) {
+            console.error(e);
+            if (typeof mostrarToast === 'function') mostrarToast('No se pudo rehacer', 'error');
+        }
+        actualizarBotonesDeshacer();
+    }
+
+    function limpiarHistorialUndo() {
+        historialDeshacer = [];
+        historialRehacer = [];
+        actualizarBotonesDeshacer();
+    }
+
     function mostrarToast(msg, tipo) {
         const el = document.getElementById('toast-sig');
         if (!el) return;
@@ -4406,7 +4810,7 @@
     }
     var overlayImpresion = null;
     var vulnerabilidadesManual = { vuln_emb: 0, vuln_disc: 0, vuln_nino: 0, vuln_adult: 0, vuln_cron: 0 };
-    var contadores = { refugio_idlesia:0, refugio_escuela:0, refugio_comedor:0, refugio_misiones:0, centro_med:0, cpt1:0, cpt2:0, cpt3:0, pol_inst:0, bom_inst:0, pc_inst:0, cuadrante:0, policia:0, medico:0, enfermero:0, paramedico:0, pol_amb:0, inparques:0, mov_amb:0, riesgo_carro: 0, arbol_v:0, cables:0, casa_r:0, inund:0, terreno_i:0, footer:0, derrumbe:0, blancas:0, servidas:0, basura:0, colector:0, autolavado:0, taller:0, carpinteria_porton:0, cauchera:0, verde:0, huerto:0, araguaney:0, apamate:0, cereipo:0, pollos:0, cerdo_c:0, cerdo_s:0, ovejos:0, cautivo:0, invasora:0, vuln_emb:0, vuln_disc:0, vuln_nino:0, vuln_adult:0, vuln_cron:0, recicladores: 0, poste_riesgo: 0, pozo_derrumbado: 0, manglar:0, humedales:0, desechos_peligrosos: 0, incendio_forestal: 0, riesgo_personalizado: 0, viv_alta_tension: 0, viv_tuberia_matriz: 0, viv_gasoducto: 0, viv_talud: 0, serv_gas: 0, serv_agua: 0, serv_drenaje: 0 };
+    var contadores = { refugio_idlesia:0, refugio_escuela:0, refugio_comedor:0, refugio_misiones:0, centro_med:0, cpt1:0, cpt2:0, cpt3:0, pol_inst:0, bom_inst:0, pc_inst:0, cuadrante:0, policia:0, medico:0, enfermero:0, paramedico:0, pol_amb:0, inparques:0, mov_amb:0, riesgo_carro: 0, arbol_v:0, cables:0, casa_r:0, inund:0, terreno_i:0, footer:0, derrumbe:0, blancas:0, servidas:0, basura:0, colector:0, autolavado:0, taller:0, carpinteria_porton:0, cauchera:0, verde:0, huerto:0, araguaney:0, apamate:0, cereipo:0, pollos:0, cerdo_c:0, cerdo_s:0, ovejos:0, cautivo:0, invasora:0, vuln_emb:0, vuln_disc:0, vuln_nino:0, vuln_adult:0, vuln_cron:0, recicladores: 0, poste_riesgo: 0, pozo_derrumbado: 0, manglar:0, humedales:0, desechos_peligrosos: 0, incendio_forestal: 0, riesgo_personalizado: 0, viv_alta_tension: 0, viv_tuberia_matriz: 0, viv_gasoducto: 0, viv_talud: 0, serv_gas: 0, serv_agua: 0, serv_drenaje: 0, lin_rio_principal:0, lin_rio_secundario:0, lin_arroyo_permanente:0, lin_quebrada_intermitente:0, lin_canal_revestido:0, lin_canal_tierra:0, lin_canal_subterraneo:0, lin_canal_servidas:0, lin_drenaje_pluvial:0, lin_tuberia_colector:0, lin_desague_comunitario:0, lin_laguna_retencion:0, lin_otro:0 };
 
     function actualizarTablaVoceros() {
         const tbody = document.getElementById('tbody-voceros'); if(!tbody) return; tbody.innerHTML = "";
@@ -4907,6 +5311,10 @@
         } else { 
             document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
             document.getElementById('opciones-linea').style.display = 'flex';
+            try {
+                const selL = document.getElementById('selectTipoLinea');
+                if (selL) aplicarPresetTipoLinea(selL.value);
+            } catch (ePre) {}
             map.editTools.startPolyline(); 
         } 
     }
@@ -4959,6 +5367,7 @@
         // Bloqueo breve: el mismo toque en móvil a veces dispara otro click y crea un 2.º icono
         _bloqueoColocacionIcono = true;
         setTimeout(function () { _bloqueoColocacionIcono = false; }, 450);
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         let contenidoIcono = resolverContenidoIcono(modoEspecial, emojiActual);
         const esCptNuevo = (modoEspecial === 'cpt1' || modoEspecial === 'cpt2' || modoEspecial === 'cpt3');
         const esPolAmbNuevo = (modoEspecial === 'pol_amb');
@@ -5086,6 +5495,7 @@
     }
 
     function registrarObjeto(obj) {
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         let descripcion = "";
         if (tipoDeTrazadoActivo === 'evac') {
             obj.tipoId = 'ruta_evacuacion';
@@ -5108,11 +5518,29 @@
 
             obj.bindPopup(generarPopupHTML(obj));
         } else {
-            obj.tipoId = 'linea_tecnica';
-            const colorElegido = document.getElementById('colorLinea').value || "#3388ff";
-            const grosorElegido = parseInt(document.getElementById('grosorLinea').value) || 4;
-            obj.setStyle({ color: colorElegido, weight: grosorElegido });
-            obj.nombrePersonalizado = prompt("Detalles (Ej: Río, Arroyo, Canal):") || "Trazado Técnico";
+            const selTipo = document.getElementById('selectTipoLinea');
+            const tipoLin = (selTipo && selTipo.value) ? selTipo.value : 'lin_otro';
+            const preset = obtenerPresetLinea(tipoLin);
+            obj.tipoId = tipoLin;
+            const colorElegido = (document.getElementById('colorLinea') && document.getElementById('colorLinea').value) || preset.color || '#3388ff';
+            const grosorElegido = parseInt(document.getElementById('grosorLinea') && document.getElementById('grosorLinea').value) || preset.weight || 4;
+            const dashArr = preset.dashArray || null;
+            obj.setStyle({ color: colorElegido, weight: grosorElegido, dashArray: dashArr, opacity: 1 });
+            obj.options.color = colorElegido;
+            obj.options.weight = grosorElegido;
+            obj.options.dashArray = dashArr;
+            let nombreLin = preset.nombre;
+            if (tipoLin === 'lin_otro') {
+                const inp = document.getElementById('inputDescLineaOtro');
+                const desc = (inp && inp.value.trim()) ? inp.value.trim() : (prompt('Describe el tipo de línea / cauce:') || 'Otros');
+                nombreLin = desc;
+                if (inp) inp.value = '';
+            }
+            obj.nombrePersonalizado = nombreLin;
+            obj.lineaSubtipo = tipoLin;
+            if (contadores[tipoLin] === undefined || isNaN(contadores[tipoLin])) contadores[tipoLin] = 0;
+            contadores[tipoLin]++;
+            actualizarBadges();
             obj.bindPopup(generarPopupHTML(obj));
         }
 
@@ -5149,6 +5577,8 @@
             if (!confirmar) return;
         }
 
+
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
 
         // Quitar del stack de elementos
         stackElementos = stackElementos.filter(i => i !== obj);
@@ -5293,6 +5723,27 @@
     });
 
     document.querySelectorAll('.sidebar-input, .sidebar-select').forEach(el => el.addEventListener('change', guardarProgresoMapa));
+
+    // Atajos: Ctrl+Z deshacer / Ctrl+Y o Ctrl+Shift+Z rehacer
+    document.addEventListener('keydown', function (ev) {
+        const tag = (ev.target && ev.target.tagName) ? ev.target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || (ev.target && ev.target.isContentEditable)) return;
+        const mod = ev.ctrlKey || ev.metaKey;
+        if (!mod) return;
+        if (ev.key === 'z' || ev.key === 'Z') {
+            if (ev.shiftKey) {
+                ev.preventDefault();
+                rehacerAccionMapa();
+            } else {
+                ev.preventDefault();
+                deshacerAccionMapa();
+            }
+        } else if (ev.key === 'y' || ev.key === 'Y') {
+            ev.preventDefault();
+            rehacerAccionMapa();
+        }
+    });
+    try { actualizarBotonesDeshacer(); } catch (eB) {}
 
     /* Recuperar header después de pinch-zoom del navegador (móvil) */
     (function () {
