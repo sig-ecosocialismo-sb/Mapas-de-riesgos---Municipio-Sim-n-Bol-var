@@ -61,22 +61,26 @@
         .logos-registro { 
             display: flex; 
             justify-content: space-between; 
-            margin-bottom: 8px; 
-            height: 64px; 
+            margin-bottom: 10px; 
+            height: 88px; 
+            pointer-events: none; /* evita clics accidentales sobre el área vacía del logo */
         }
         .logo-wrapper { 
-            flex: 0 0 120px;
-            height: 64px; 
+            flex: 0 0 150px;
+            height: 88px; 
             overflow: hidden; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
+            pointer-events: none;
         }
         .logos-registro img { 
-            width: 90%; 
-            height: 90%; 
+            width: 100%; 
+            height: 100%; 
             object-fit: contain; 
-            transform: scale(1.7);
+            transform: scale(2.35);
+            transform-origin: center center;
+            pointer-events: none;
         }
 
         .tabs-acceso { display: flex; justify-content: center; gap: 16px; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
@@ -84,7 +88,15 @@
         .tab-btn.active { color: var(--v-lime); border-bottom: 2px solid var(--v-lime); }
 
         /* Títulos solo dentro de la tarjeta de registro (no afectan el resto del sistema) */
-        .card-registro h2 { margin: 0; font-size: 18px; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-registro h2 {
+            margin: 0;
+            font-size: 15px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            line-height: 1.3;
+            padding: 0 6px;
+        }
         .card-registro .subtitle { color: var(--v-lime); font-size: 11px; margin: 4px 0 12px 0; font-weight: bold; text-transform: uppercase; }
 
         h2 { margin: 0; font-size: 24px; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
@@ -254,18 +266,20 @@
                 box-sizing: border-box !important;
             }
             .logos-registro {
-                height: 64px !important;
+                height: 78px !important;
                 margin-bottom: 12px !important;
             }
             .logo-wrapper {
-                flex: 0 0 110px !important;
-                height: 64px !important;
+                flex: 0 0 130px !important;
+                height: 78px !important;
             }
             .logos-registro img {
-                transform: scale(1.35) !important;
+                transform: scale(2.1) !important;
             }
             #pantalla-registro h2 {
-                font-size: 17px !important;
+                font-size: 13px !important;
+                line-height: 1.25 !important;
+                padding: 0 4px !important;
             }
             #pantalla-registro .subtitle {
                 font-size: 11px !important;
@@ -1322,7 +1336,7 @@
             <div class="logo-wrapper"><img src="logo2.png.png" alt="Logo 2"></div>
         </div>
 
-        <h2>SISTEMA DE GESTIÓN</h2>
+        <h2>SISTEMA DE INFORMACIÓN GEOGRÁFICA PREVENTIVA</h2>
         <p class="subtitle">Municipio Simón Bolívar</p>
 
         <div class="tabs-acceso">
