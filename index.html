@@ -1677,7 +1677,7 @@
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Color:</label>
-                                <input type="color" id="colorLinea" value="#16A34A" style="width:36px; height:24px; padding:0; cursor:pointer; border:1px solid #444;">
+                                <input type="color" id="colorLinea" value="#16A34A" style="width:36px; height:24px; padding:0; cursor:pointer; border:1px solid #444;" onchange="onCambioColorLineaLeyenda(this.value)">
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <label style="font-size:9px; color:#aaa; text-transform:uppercase; font-weight:bold;">Grosor: <span id="valGrosorLinea">8</span>px</label>
@@ -2189,14 +2189,43 @@
         if (campoOtro) campoOtro.style.display = (tipoId === 'lin_otro') ? 'block' : 'none';
     }
 
+    function onCambioColorLineaLeyenda(color) {
+        if (!color) return;
+        const sel = document.getElementById('selectTipoLinea');
+        const tipoId = (sel && sel.value) ? sel.value : (tipoResaltadoLeyenda && String(tipoResaltadoLeyenda).indexOf('lin_') === 0 ? tipoResaltadoLeyenda : null);
+        if (tipoId) {
+            actualizarColorLeyendaLinea(tipoId, color);
+            // Aplicar el nuevo color a todas las líneas ya dibujadas de ese tipo
+            (stackElementos || []).forEach(function (capa) {
+                if (!capa || capa.tipoId !== tipoId || typeof capa.setStyle !== 'function') return;
+                try {
+                    capa.setStyle({ color: color });
+                    if (capa.options) capa.options.color = color;
+                } catch (e) {}
+            });
+            if (tipoResaltadoLeyenda === tipoId) {
+                try { resaltarMarcadoresPorTipo(tipoId); } catch (eR) {}
+            }
+            try { guardarProgresoMapa(); } catch (eG) {}
+        }
+    }
+
+    function actualizarColorLeyendaLinea(tipoId, color) {
+        if (!tipoId || !color) return;
+        try {
+            if (CATALOGO_LINEAS[tipoId]) CATALOGO_LINEAS[tipoId].color = color;
+            const btns = document.querySelectorAll('#leyenda-lineas-hidro .btn-mapa');
+            btns.forEach(function (btn) {
+                const oc = btn.getAttribute('onclick') || '';
+                if (oc.indexOf("'" + tipoId + "'") === -1 && oc.indexOf('"' + tipoId + '"') === -1) return;
+                const span = btn.querySelector('span[style*="background"]');
+                if (span) span.style.background = color;
+            });
+        } catch (e) { console.warn('actualizarColorLeyendaLinea:', e); }
+    }
+
     function seleccionarTipoLineaLeyenda(tipoId, btn) {
         if (!tipoId) return;
-        // Segundo toque: apagar resaltado
-        if (tipoResaltadoLeyenda === tipoId) {
-            try { quitarResaltadoLeyenda(); } catch (e) {}
-            document.querySelectorAll('#leyenda-lineas-hidro .btn-mapa').forEach(b => b.classList.remove('active'));
-            return;
-        }
         const sel = document.getElementById('selectTipoLinea');
         if (sel) {
             sel.value = tipoId;
@@ -2204,10 +2233,10 @@
         }
         document.querySelectorAll('#leyenda-lineas-hidro .btn-mapa').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
-        const hay = (stackElementos || []).some(c => c && c.tipoId === tipoId);
+        // Resaltar en el mapa todas las líneas ya colocadas de este tipo
         try { resaltarMarcadoresPorTipo(tipoId); } catch (e) {}
-        // Solo iniciar trazado si aún no hay de ese tipo (para no interrumpir el resaltado)
-        if (!hay && typeof iniciarTrazado === 'function') {
+        // Siempre (re)iniciar el trazado: permite dibujar una o varias líneas del mismo tipo
+        if (typeof iniciarTrazado === 'function') {
             try { iniciarTrazado('line'); } catch (e2) {}
             if (sel) { sel.value = tipoId; aplicarPresetTipoLinea(tipoId); }
         }
@@ -3723,9 +3752,25 @@
         const capa = stackElementos.find(el => L.stamp(el) === idCapa);
         if (!capa || typeof capa.setStyle !== 'function') return;
         const estilo = {};
-        if (nuevoColor) estilo.color = nuevoColor;
-        if (nuevoGrosor) estilo.weight = parseInt(nuevoGrosor);
+        if (nuevoColor) {
+            estilo.color = nuevoColor;
+            if (capa.options) capa.options.color = nuevoColor;
+        }
+        if (nuevoGrosor) {
+            estilo.weight = parseInt(nuevoGrosor);
+            if (capa.options) capa.options.weight = parseInt(nuevoGrosor);
+        }
         capa.setStyle(estilo);
+        // Actualizar color de la leyenda y del catálogo para ese tipo de línea
+        if (nuevoColor && capa.tipoId && typeof actualizarColorLeyendaLinea === 'function') {
+            actualizarColorLeyendaLinea(capa.tipoId, nuevoColor);
+            const colorEl = document.getElementById('colorLinea');
+            if (colorEl) colorEl.value = nuevoColor;
+        }
+        // Si está resaltado, refrescar resaltado con el nuevo color
+        if (capa.tipoId && tipoResaltadoLeyenda === capa.tipoId) {
+            try { resaltarMarcadoresPorTipo(capa.tipoId); } catch (eR) {}
+        }
         guardarProgresoMapa();
     }
 
