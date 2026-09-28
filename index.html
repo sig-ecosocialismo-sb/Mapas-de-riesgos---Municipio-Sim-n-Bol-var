@@ -5987,8 +5987,9 @@
     }
     function cambiarEmoji(e, btn, esp) {
         if (!esMapaEditable()) return;
-        // Segundo toque al mismo ítem de la leyenda: apagar iluminación (igual que tocar el mapa vacío)
-        if (tipoResaltadoLeyenda === esp) {
+        // Solo si el modo colocación YA está activo para este mismo tipo: segundo toque = cancelar/apagar
+        // (igual que tocar el mapa vacío). Si se acaba de colocar (auto-desactivado), este toque REACTIVA.
+        if (!modoNavegar && modoEspecial === esp) {
             try { quitarResaltadoLeyenda(); } catch (err) {}
             try { activarMano(false); } catch (err) {}
             return;
@@ -6128,7 +6129,7 @@
         });
     })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424ac43c9423198',t:'MTc5MDYxODY5MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424d4558f581afb',t:'MTc5MDYyMDMzMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 istener('touchend', schedule, { passive: true });
         window.addEventListener('orientationchange', function () {
