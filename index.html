@@ -765,6 +765,7 @@
         .btn-float.activo-float { background: var(--v-lim); border: 2px solid var(--v-osc); }
 
         #btnFinalizar { display: none; background: #4CAF50; color: white; font-size: 22px; border: 2px solid white; }
+        #btnCancelarTrazado { display: none; background: #e74c3c; color: white; font-size: 18px; border: 2px solid white; }
 
         .zoom-preciso-panel { position: absolute; top: 15px; right: 15px; z-index: 2000; background: white; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid var(--v-osc); }
         .zoom-preciso-panel input[type="range"] { cursor: pointer; width: 120px; accent-color: var(--v-osc); }
@@ -1810,6 +1811,7 @@
                 <button id="btnDeshacer" class="btn-float" onclick="deshacerAccionMapa()" title="Deshacer" style="opacity:0.45; font-size:16px;">↩️</button>
                 <button id="btnRehacer" class="btn-float" onclick="rehacerAccionMapa()" title="Rehacer" style="opacity:0.45; font-size:16px;">↪️</button>
                 <button id="btnFinalizar" class="btn-float" onclick="finalizarTrazado()" title="Finalizar trazado">✔️</button>
+                <button id="btnCancelarTrazado" class="btn-float" onclick="cancelarTrazado()" title="Cancelar trazado (no guardar)">❌</button>
             </div>
             <div id="map"></div>
             <div id="indicador-autoguardado">💾 Autoguardado...</div>
@@ -2226,6 +2228,16 @@
 
     function seleccionarTipoLineaLeyenda(tipoId, btn) {
         if (!tipoId) return;
+        // Segundo toque al mismo tipo mientras se traza = cancelar sin sumar (igual que la X)
+        try {
+            const selActual = document.getElementById('selectTipoLinea');
+            if (selActual && selActual.value === tipoId && trazandoAhora && tipoDeTrazadoActivo === 'line') {
+                cancelarTrazado();
+                try { quitarResaltadoLeyenda(); } catch (eQ) {}
+                document.querySelectorAll('#leyenda-lineas-hidro .btn-mapa').forEach(b => b.classList.remove('active'));
+                return;
+            }
+        } catch (eT) {}
         const sel = document.getElementById('selectTipoLinea');
         if (sel) {
             sel.value = tipoId;
@@ -4832,6 +4844,7 @@
     var _bloqueoColocacionIcono = false; // evita marcadores fantasma al tocar/popup en móvil
     var stackElementos = [];
     var objetoSeleccionado = null, trazandoAhora = null, tipoDeTrazadoActivo = "";
+    var _cancelarTrazadoActivo = false;
     var _toastTimerSig = null;
 
     /* === DESHACER / REHACER === */
@@ -5209,21 +5222,53 @@
         // Teléfono: +/− arriba derecha | Computadora: arriba izquierda (como antes)
         L.control.zoom({ position: esMovilMapa ? 'topright' : 'topleft' }).addTo(map);
         L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
-        map.on('editable:drawing:start', e => { trazandoAhora = e.layer; document.getElementById('btnFinalizar').style.display = 'flex'; });
+        map.on('editable:drawing:start', e => {
+            trazandoAhora = e.layer;
+            document.getElementById('btnFinalizar').style.display = 'flex';
+            document.getElementById('btnCancelarTrazado').style.display = 'flex';
+        });
         map.on('editable:drawing:click', e => { if (tipoDeTrazadoActivo === 'evac' && trazandoAhora) { trazandoAhora.colorEvac = document.getElementById('colorEvac').value; trazandoAhora.grosorEvac = parseInt(document.getElementById('grosorEvac').value); trazandoAhora.setStyle({ color: trazandoAhora.colorEvac, weight: 0, fill: false }); recrearFlechasRuta(trazandoAhora); } });
         map.on('editable:drawing:end', e => {
             const capaNueva = e.layer;
-            registrarObjeto(capaNueva);
+            ocultarBotonesTrazado();
+
+            // Caso 1: se canceló con la X o se cambió de herramienta → borrar sin sumar a la leyenda
+            if (_cancelarTrazadoActivo) {
+                _cancelarTrazadoActivo = false;
+                try { if (capaNueva) map.removeLayer(capaNueva); } catch (err) {}
+                try { if (trazandoAhora && trazandoAhora !== capaNueva) map.removeLayer(trazandoAhora); } catch (err2) {}
+                trazandoAhora = null;
+                tipoDeTrazadoActivo = "";
+                document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
+                activarMano();
+                return;
+            }
+
+            // Caso 2: trazo sin puntos suficientes → descartar sin sumar ni preguntar nada
+            const esPol = (tipoDeTrazadoActivo === 'pol');
+            const nPts = contarPuntosTrazado(capaNueva);
+            if ((esPol && nPts < 3) || (!esPol && nPts < 2)) {
+                try { if (capaNueva) map.removeLayer(capaNueva); } catch (err) {}
+                trazandoAhora = null;
+                tipoDeTrazadoActivo = "";
+                document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
+                activarMano();
+                if (typeof mostrarToast === 'function') mostrarToast(esPol ? 'Polígono descartado: marca al menos 3 puntos' : 'Línea descartada: marca al menos 2 puntos', 'aviso');
+                return;
+            }
+
+            // Caso 3: trazo válido → se guarda y AHORA SÍ suma a la leyenda
+            const registrado = registrarObjeto(capaNueva);
             // Al terminar el trazado: ocultar los cuadros/vértices de edición hasta que se vuelva a seleccionar
             try {
                 if (capaNueva && typeof capaNueva.disableEdit === 'function') capaNueva.disableEdit();
             } catch (err) {}
             activarMano();
-            document.getElementById('btnFinalizar').style.display = 'none';
             trazandoAhora = null;
             tipoDeTrazadoActivo = "";
             document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
             guardarProgresoMapa();
+            if (registrado && typeof mostrarToast === 'function') mostrarToast('✅ Trazo guardado en la leyenda');
         });
         // Al arrastrar o borrar vértices de la vía de evacuación, actualizar las flechas en vivo
         map.on('editable:vertex:drag', e => {
@@ -5474,7 +5519,19 @@
     function iniciarTrazado(tipo) {
         if (!esMapaEditable()) return;
         if (!map) return;
-        deseleccionarTodo(); 
+        // Si había un trazo pendiente sin finalizar con ✔️, se descarta SIN sumar a la leyenda
+        if (trazandoAhora) {
+            _cancelarTrazadoActivo = true;
+            try { map.editTools.stopDrawing(); } catch (e) {
+                try { map.removeLayer(trazandoAhora); } catch (e2) {}
+                _cancelarTrazadoActivo = false;
+                trazandoAhora = null;
+                tipoDeTrazadoActivo = "";
+                ocultarBotonesTrazado();
+            }
+            if (typeof mostrarToast === 'function') mostrarToast('Trazo anterior descartado (usa ✔️ para guardar)', 'aviso');
+        }
+        deseleccionarTodo();
         emojiActual = null; 
         modoNavegar = true; 
         document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); 
@@ -5505,7 +5562,38 @@
         } 
     }
 
-    function finalizarTrazado() { if(trazandoAhora) map.editTools.stopDrawing(); }
+    function ocultarBotonesTrazado() {
+        const b1 = document.getElementById('btnFinalizar');
+        const b2 = document.getElementById('btnCancelarTrazado');
+        if (b1) b1.style.display = 'none';
+        if (b2) b2.style.display = 'none';
+    }
+    function contarPuntosTrazado(capa) {
+        try {
+            if (!capa || typeof capa.getLatLngs !== 'function') return 0;
+            const ll = capa.getLatLngs();
+            if (!ll || !ll.length) return 0;
+            if (Array.isArray(ll[0])) return (ll[0] || []).length;
+            return ll.length;
+        } catch (e) { return 0; }
+    }
+    function finalizarTrazado() { if(trazandoAhora && map) map.editTools.stopDrawing(); }
+    function cancelarTrazado() {
+        if (!trazandoAhora || !map) { ocultarBotonesTrazado(); return; }
+        _cancelarTrazadoActivo = true;
+        try {
+            map.editTools.stopDrawing();
+        } catch (e) {
+            try { map.removeLayer(trazandoAhora); } catch (e2) {}
+            _cancelarTrazadoActivo = false;
+            trazandoAhora = null;
+            tipoDeTrazadoActivo = "";
+            ocultarBotonesTrazado();
+            document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
+            activarMano();
+        }
+        if (typeof mostrarToast === 'function') mostrarToast('Trazo cancelado (no se sumó)', 'aviso');
+    }
     const ZOOM_MIN_UI = 12;
     const ZOOM_MAX_UI = 20;
 
@@ -5683,6 +5771,16 @@
     }
 
     function registrarObjeto(obj) {
+        // Blindaje: jamás registrar trazos cancelados o vacíos (no suman a la leyenda)
+        if (typeof _cancelarTrazadoActivo !== 'undefined' && _cancelarTrazadoActivo) return false;
+        try {
+            const nPtsObj = contarPuntosTrazado(obj);
+            const esPolObj = (tipoDeTrazadoActivo === 'pol');
+            if ((esPolObj && nPtsObj < 3) || (!esPolObj && nPtsObj < 2)) {
+                try { map.removeLayer(obj); } catch (e) {}
+                return false;
+            }
+        } catch (eG) {}
         try { registrarEstadoParaDeshacer(); } catch (eU) {}
         let descripcion = "";
         if (tipoDeTrazadoActivo === 'evac') {
@@ -5747,6 +5845,7 @@
         stackElementos.push(obj);
         try { asegurarPoligonosAlFondo(); } catch (eZ) {}
         guardarProgresoMapa();
+        return true;
     }
 
     async function eliminarObjeto(obj, opciones) {
