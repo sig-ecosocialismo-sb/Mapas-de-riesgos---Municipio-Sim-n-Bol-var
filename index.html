@@ -3950,10 +3950,14 @@
                     L.DomEvent.stopPropagation(ev);
                     if (emojiActual && !modoNavegar) {
                         crearIcono(ev.latlng);
+                        // Solo colocar el icono: impedir que se abran las especificaciones del polígono/línea
+                        try { layer.closePopup(); } catch (eCP) {}
+                        setTimeout(function () { try { map.closePopup(); } catch (eCP2) {} }, 0);
                     } else {
                         deseleccionarTodo(); 
                         objetoSeleccionado = layer;
                         if (layer.enableEdit) layer.enableEdit();
+                        try { armarApagadoVertices(layer); } catch (eT) {}
                         if (layer.tipoId === 'recicladores') { 
                             alternarLeyendaRecicladores(); 
                             if(layer.datosReciclador) restaurarCamposReciclador(layer.datosReciclador); 
@@ -4858,6 +4862,7 @@
     var _toastTimerSig = null;
 
     /* === DESHACER / REHACER === */
+    var _temporizadorApagadoVertices = null;
     var historialDeshacer = [];
     var historialRehacer = [];
     var _bloqueandoHistorialUndo = false;
@@ -4928,6 +4933,7 @@
                 try { if (capa) map.removeLayer(capa); } catch (e2) {}
             });
             stackElementos = [];
+            try { cancelarApagadoVertices(); } catch (eT) {}
             objetoSeleccionado = null;
             for (let k in contadores) contadores[k] = 0;
             if (snap.vulnerabilidadesManual) {
@@ -5288,6 +5294,11 @@
             try {
                 if (capaNueva && typeof capaNueva.disableEdit === 'function') capaNueva.disableEdit();
             } catch (err) {}
+            setTimeout(function () {
+                try {
+                    if (capaNueva && typeof capaNueva.disableEdit === 'function') capaNueva.disableEdit();
+                } catch (errD) {}
+            }, 120);
             activarMano();
             trazandoAhora = null;
             tipoDeTrazadoActivo = "";
@@ -5299,14 +5310,17 @@
         // (no aplica mientras se está dibujando un trazo nuevo: eso lo cubre registrarObjeto).
         map.on('editable:vertex:dragstart', e => {
             if (trazandoAhora) return;
+            try { cancelarApagadoVertices(); } catch (errT) {}
             try { registrarEstadoParaDeshacer(); } catch (errU) {}
         });
         map.on('editable:vertex:rawclick', e => {
             if (trazandoAhora) return;
+            try { cancelarApagadoVertices(); } catch (errT) {}
             try { registrarEstadoParaDeshacer(); } catch (errU) {}
         });
         map.on('editable:middlemarker:mousedown', e => {
             if (trazandoAhora) return;
+            try { cancelarApagadoVertices(); } catch (errT) {}
             try { registrarEstadoParaDeshacer(); } catch (errU) {}
         });
         // Al arrastrar o borrar vértices de la vía de evacuación, actualizar las flechas en vivo
@@ -5322,6 +5336,7 @@
             if (layer.tipoId === 'ruta_evacuacion') {
                 try { recrearFlechasRuta(layer); } catch (err) {}
             }
+            if (!trazandoAhora) { try { armarApagadoVertices(layer); } catch (errT) {} }
             try { guardarProgresoMapa(); } catch (err) {}
         });
         map.on('editable:vertex:deleted', e => {
@@ -5330,6 +5345,7 @@
             if (layer.tipoId === 'ruta_evacuacion') {
                 try { recrearFlechasRuta(layer); } catch (err) {}
             }
+            if (!trazandoAhora) { try { armarApagadoVertices(layer); } catch (errT) {} }
             try { guardarProgresoMapa(); } catch (err) {}
         });
         map.on('click', e => {
@@ -5878,8 +5894,11 @@
             L.DomEvent.stopPropagation(e);
             if (emojiActual && !modoNavegar) {
                 crearIcono(e.latlng);
+                // Solo colocar el icono: impedir que se abran las especificaciones del polígono/línea
+                try { obj.closePopup(); } catch (eCP) {}
+                setTimeout(function () { try { map.closePopup(); } catch (eCP2) {} }, 0);
             } else {
-                if (modoNavegar) { deseleccionarTodo(); objetoSeleccionado = obj; obj.enableEdit(); refrescarPopup(obj); obj.openPopup(); } 
+                if (modoNavegar) { deseleccionarTodo(); objetoSeleccionado = obj; obj.enableEdit(); try { armarApagadoVertices(obj); } catch (eT) {} refrescarPopup(obj); obj.openPopup(); } 
             }
         });
         stackElementos.push(obj);
@@ -5920,6 +5939,7 @@
         actualizarBadges();
         if (obj.tipoId === 'recicladores') alternarLeyendaNormal();
 
+        try { cancelarApagadoVertices(); } catch (eT) {}
         try {
             if (typeof obj.disableEdit === 'function') obj.disableEdit();
         } catch (e) {}
@@ -5962,7 +5982,23 @@
         }
     }
 
+    function cancelarApagadoVertices() {
+        if (_temporizadorApagadoVertices) {
+            try { clearTimeout(_temporizadorApagadoVertices); } catch (e) {}
+            _temporizadorApagadoVertices = null;
+        }
+    }
+    function armarApagadoVertices(capa) {
+        cancelarApagadoVertices();
+        if (!capa || typeof capa.disableEdit !== 'function') return;
+        // Si en 5 segundos no se manipula (arrastrar/borrar vértices), apagar los cuadros
+        _temporizadorApagadoVertices = setTimeout(function () {
+            _temporizadorApagadoVertices = null;
+            try { capa.disableEdit(); } catch (e) {}
+        }, 5000);
+    }
     function deseleccionarTodo() {
+        try { cancelarApagadoVertices(); } catch (eT) {}
         if (objetoSeleccionado) {
             try {
                 if (typeof objetoSeleccionado.disableEdit === 'function') objetoSeleccionado.disableEdit();
@@ -6129,7 +6165,7 @@
         });
     })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424d4558f581afb',t:'MTc5MDYyMDMzMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424e5f5c8255322',t:'MTc5MDYyMTA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 istener('touchend', schedule, { passive: true });
         window.addEventListener('orientationchange', function () {
