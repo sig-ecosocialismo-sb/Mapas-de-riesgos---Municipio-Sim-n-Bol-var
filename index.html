@@ -2196,6 +2196,7 @@
         const sel = document.getElementById('selectTipoLinea');
         const tipoId = (sel && sel.value) ? sel.value : (tipoResaltadoLeyenda && String(tipoResaltadoLeyenda).indexOf('lin_') === 0 ? tipoResaltadoLeyenda : null);
         if (tipoId) {
+            try { registrarEstadoParaDeshacer(); } catch (eU) {}
             actualizarColorLeyendaLinea(tipoId, color);
             // Aplicar el nuevo color a todas las líneas ya dibujadas de ese tipo
             (stackElementos || []).forEach(function (capa) {
@@ -2462,6 +2463,7 @@
         if (!esMapaEditable()) return;
         const n = (nivel || '').toLowerCase();
         if (n !== 'alto' && n !== 'medio' && n !== 'bajo') return;
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         capa.nivelMagnitud = n;
         const contenidoIcono = resolverContenidoIcono(capa.tipoId, capa.emojiPersonalizado || obtenerEmojiPorId(capa.tipoId));
         const esCpt = (capa.tipoId === 'cpt1' || capa.tipoId === 'cpt2' || capa.tipoId === 'cpt3');
@@ -3753,6 +3755,7 @@
         const nombreActual = capa.nombrePersonalizado || "";
         const nuevoNombre = prompt("Nuevo nombre para este elemento:", nombreActual);
         if (nuevoNombre !== null && nuevoNombre.trim() !== "") {
+            try { registrarEstadoParaDeshacer(); } catch (eU) {}
             capa.nombrePersonalizado = nuevoNombre.trim();
             refrescarPopup(capa);
             capa.openPopup();
@@ -3772,6 +3775,7 @@
             estilo.weight = parseInt(nuevoGrosor);
             if (capa.options) capa.options.weight = parseInt(nuevoGrosor);
         }
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         capa.setStyle(estilo);
         // Actualizar color de la leyenda y del catálogo para ese tipo de línea
         if (nuevoColor && capa.tipoId && typeof actualizarColorLeyendaLinea === 'function') {
@@ -3791,6 +3795,7 @@
         if (!capa) return;
         if (nuevoColor) capa.colorEvac = nuevoColor;
         if (nuevoGrosor) capa.grosorEvac = parseInt(nuevoGrosor);
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         recrearFlechasRuta(capa);
         guardarProgresoMapa();
     }
@@ -3957,6 +3962,7 @@
                     }
                 });
 
+                layer.on('dragstart', function() { try { registrarEstadoParaDeshacer(); } catch (eU) {} });
                 layer.on('dragend', function() {
                     if (layer.tipoId === 'recicladores') {
                         const nuevaPos = layer.getLatLng(); document.getElementById('recCoordenadas').value = `${nuevaPos.lat.toFixed(6)}, ${nuevaPos.lng.toFixed(6)}`;
@@ -4006,6 +4012,7 @@
         const capaPoligono = stackElementos.find(el => L.stamp(el) === idCapa);
         if (capaPoligono && typeof capaPoligono.setStyle === 'function') {
             const nuevaOpacidad = checked ? 0.4 : 0;
+            try { registrarEstadoParaDeshacer(); } catch (eU) {}
             capaPoligono.setStyle({ fillOpacity: nuevaOpacidad });
             capaPoligono.options.fillOpacity = nuevaOpacidad;
             guardarProgresoMapa();
@@ -4062,13 +4069,15 @@
                     placeholder="Describa el riesgo del poste..."
                     style="width:100%; font-size:11px; color:black; background:white; padding:3px; border:1px solid #ccc; border-radius:3px;"
                     onchange="guardarEspecificacionPoste(${idCapa}, true)"
-                    oninput="guardarEspecificacionPoste(${idCapa}, false)">
+                    oninput="guardarEspecificacionPoste(${idCapa}, false)"
+                    onfocus="registrarEstadoParaDeshacer()">
             </div>
             ${p.opcion ? `<div style="font-size:10px; color:#135242; font-weight:800; background:#e8f5e9; border:1px solid #B4D445; border-radius:4px; padding:4px 6px; margin-top:4px;">⚡ ${textoEspecificacionPoste({ especificacionDiscapacidad: valorActual })}</div>` : `<div style="font-size:9px; color:#c62828; font-weight:bold; margin-top:2px;">Seleccione el tipo de riesgo para fijar el poste.</div>`}
         `;
     }
 
     function onCambioOpcionPoste(idCapa, valor) {
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         const bloque = document.getElementById('bloque-otro-poste-' + idCapa);
         if (bloque) bloque.style.display = (valor === 'Otro') ? 'block' : 'none';
         if (valor !== 'Otro') {
@@ -4102,7 +4111,7 @@
 
     function guardarEspecificacion(idMarcador, valor) {
         const marcador = stackElementos.find(el => L.stamp(el) === idMarcador);
-        if (marcador) { marcador.especificacionDiscapacidad = valor; guardarProgresoMapa(); }
+        if (marcador) { try { registrarEstadoParaDeshacer(); } catch (eU) {} marcador.especificacionDiscapacidad = valor; guardarProgresoMapa(); }
     }
 
     function construirElementosParaGuardar() {
@@ -4141,6 +4150,7 @@
     function actualizarVulnerabilidadManual(idVulnerabilidad, valor) {
         let n = parseInt(valor);
         if (isNaN(n) || n < 0) n = 0;
+        try { registrarEstadoParaDeshacer(); } catch (eU) {}
         vulnerabilidadesManual[idVulnerabilidad] = n;
         const input = document.getElementById('manual-' + idVulnerabilidad);
         if (input) input.value = n;
@@ -4880,8 +4890,22 @@
 
     function registrarEstadoParaDeshacer() {
         if (_bloqueandoHistorialUndo) return;
+        if (typeof mapaSoloLectura !== 'undefined' && mapaSoloLectura) return;
         try {
-            historialDeshacer.push(capturarSnapshotMapaUndo());
+            const snap = capturarSnapshotMapaUndo();
+            // Dedup: si el estado actual es idéntico al tope de la pila, no apilar de nuevo
+            // (evita entradas fantasma cuando varios ganchos pre-cambio disparan juntos).
+            const top = historialDeshacer.length ? historialDeshacer[historialDeshacer.length - 1] : null;
+            if (top) {
+                try {
+                    if (JSON.stringify(top.elementos) === JSON.stringify(snap.elementos) &&
+                        JSON.stringify(top.contadores || {}) === JSON.stringify(snap.contadores || {}) &&
+                        JSON.stringify(top.vulnerabilidadesManual || {}) === JSON.stringify(snap.vulnerabilidadesManual || {})) {
+                        return;
+                    }
+                } catch (eD) {}
+            }
+            historialDeshacer.push(snap);
             if (historialDeshacer.length > MAX_HISTORIAL_UNDO) historialDeshacer.shift();
             historialRehacer = [];
             actualizarBotonesDeshacer();
@@ -5269,6 +5293,20 @@
             document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
             guardarProgresoMapa();
             if (registrado && typeof mostrarToast === 'function') mostrarToast('✅ Trazo guardado en la leyenda');
+        });
+        // Deshacer: registrar estado ANTES de mover/borrar/agregar vértices de líneas, rutas y polígonos
+        // (no aplica mientras se está dibujando un trazo nuevo: eso lo cubre registrarObjeto).
+        map.on('editable:vertex:dragstart', e => {
+            if (trazandoAhora) return;
+            try { registrarEstadoParaDeshacer(); } catch (errU) {}
+        });
+        map.on('editable:vertex:rawclick', e => {
+            if (trazandoAhora) return;
+            try { registrarEstadoParaDeshacer(); } catch (errU) {}
+        });
+        map.on('editable:middlemarker:mousedown', e => {
+            if (trazandoAhora) return;
+            try { registrarEstadoParaDeshacer(); } catch (errU) {}
         });
         // Al arrastrar o borrar vértices de la vía de evacuación, actualizar las flechas en vivo
         map.on('editable:vertex:drag', e => {
@@ -5723,6 +5761,7 @@
             if (m.tipoId === 'recicladores') alternarLeyendaRecicladores();
             m.openPopup();
         });
+        m.on('dragstart', function() { try { registrarEstadoParaDeshacer(); } catch (eU) {} });
         m.on('dragend', function() { if (m.tipoId === 'recicladores') { m.datosReciclador = capturarCamposReciclador(); } guardarProgresoMapa(); });
         if (modoEspecial === 'recicladores') { alternarLeyendaRecicladores(); limpiarCamposReciclador(); document.getElementById('recCoordenadas').value = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`; m.datosReciclador = capturarCamposReciclador(); }
         stackElementos.push(m);
@@ -6088,5 +6127,5 @@
         });
     })();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a41f113e795867ce',t:'MTc5MDU1OTkxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
