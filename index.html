@@ -5234,7 +5234,8 @@
 
     function inicializarMapa() {
         if (map) return;
-        const esMovilMapa = window.matchMedia('(max-width: 768px)').matches;
+        const esMovilMapa = window.matchMedia('(max-width: 768px)').matches ||
+            (window.matchMedia('(pointer: coarse)').matches && window.innerWidth <= 1024);
         map = L.map('map', { editable: true, zoomControl: false }).setView([10.136, -64.686], 18);
         // Panel de polígonos debajo de líneas/iconos (z-index menor que overlayPane=400)
         try {
@@ -6127,5 +6128,13 @@
         });
     })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a41f113e795867ce',t:'MTc5MDU1OTkxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424ac43c9423198',t:'MTc5MDYxODY5MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+istener('touchend', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+            setTimeout(forzarHeaderVisible, 300);
+        });
+    })();
+</script>
+</body>
 </html>
