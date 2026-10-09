@@ -63,35 +63,25 @@
             justify-content: space-between; 
             align-items: center;
             margin-bottom: 10px; 
-            height: 88px; 
-            pointer-events: none; /* evita clics accidentales sobre el área vacía del logo */
+            height: 72px; 
+            pointer-events: none;
         }
         .logo-wrapper { 
-            flex: 0 0 150px;
-            height: 88px; 
-            overflow: hidden; 
+            flex: 0 0 180px;
+            height: 72px; 
+            overflow: visible; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             pointer-events: none;
         }
-        /* Contenedor más ancho para el logo izquierdo (Alcaldía) */
-        .logos-registro .logo-wrapper:first-child {
-            flex: 0 0 200px;
-            overflow: visible;
-        }
         .logos-registro img { 
-            width: 100%; 
-            height: 100%; 
+            width: auto; 
+            height: 56px; 
+            max-width: 180px;
             object-fit: contain; 
-            transform: scale(2.35);
-            transform-origin: center center;
+            transform: none;
             pointer-events: none;
-        }
-        /* Logo izquierdo: menos zoom + subir para alinear con el derecho */
-        .logos-registro .logo-wrapper:first-child img {
-            transform: scale(1.95) translateY(-8px);
-            transform-origin: center center;
         }
 
         .tabs-acceso { display: flex; justify-content: center; gap: 16px; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
@@ -200,17 +190,19 @@
                 padding: 0 2px !important;
             }
             .logo-box {
-                width: 58px !important;
-                height: 48px !important;
+                width: 70px !important;
+                height: 42px !important;
                 top: 50% !important;
                 transform: translateY(-50%) !important;
-                overflow: hidden !important;
+                overflow: visible !important;
             }
             .logo-left { left: 2px !important; }
             .logo-right { right: 2px !important; }
             .logo-box img {
-                transform: scale(1.5) !important;
-                transform-origin: center center !important;
+                height: 36px !important;
+                max-width: 70px !important;
+                width: auto !important;
+                transform: none !important;
             }
             #titulo-principal {
                 font-size: 11.5px !important;
@@ -277,23 +269,20 @@
                 box-sizing: border-box !important;
             }
             .logos-registro {
-                height: 78px !important;
+                height: 64px !important;
                 margin-bottom: 12px !important;
                 align-items: center !important;
             }
             .logo-wrapper {
-                flex: 0 0 130px !important;
-                height: 78px !important;
-            }
-            .logos-registro .logo-wrapper:first-child {
-                flex: 0 0 170px !important;
+                flex: 0 0 140px !important;
+                height: 64px !important;
                 overflow: visible !important;
             }
             .logos-registro img {
-                transform: scale(2.1) !important;
-            }
-            .logos-registro .logo-wrapper:first-child img {
-                transform: scale(1.8) translateY(-6px) !important;
+                height: 48px !important;
+                max-width: 140px !important;
+                width: auto !important;
+                transform: none !important;
             }
             #pantalla-registro h2 {
                 font-size: 13px !important;
@@ -426,11 +415,11 @@
             top: 50%; 
             transform: translateY(-50%); 
             width: 160px;        
-            height: 100px;       
+            height: 70px;       
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            overflow: hidden;
+            overflow: visible;
             pointer-events: none;
             z-index: 1005;
         }
@@ -438,20 +427,13 @@
         .logo-right { right: 12px; }
 
         .logo-box img { 
-            width: 100%; 
-            height: 100%; 
+            width: auto; 
+            height: 56px; 
+            max-width: 160px;
             object-fit: contain; 
-            transform: scale(2.0); 
-            transform-origin: center center;
+            transform: none; 
             filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
             pointer-events: none;
-        }
-        .logo-box.logo-left {
-            width: 190px;
-            overflow: visible;
-        }
-        .logo-box.logo-left img {
-            transform: scale(1.7);
         } 
 
         #titulo-principal {
