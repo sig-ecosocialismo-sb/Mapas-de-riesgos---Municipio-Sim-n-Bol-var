@@ -33,6 +33,7 @@
             background: linear-gradient(135deg, var(--v-lime) 0%, var(--v-deep) 100%);
             z-index: 5000; display: flex; align-items: center; justify-content: center;
             padding: 12px;
+            overflow-x: hidden;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
         }
@@ -46,6 +47,7 @@
             border-radius: 16px;
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
             text-align: center;
+            overflow-x: hidden;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             box-sizing: border-box;
@@ -61,13 +63,15 @@
         .logos-registro { 
             display: flex; 
             justify-content: space-between; 
-            margin-bottom: 10px; 
-            height: 88px; 
-            pointer-events: none; /* evita clics accidentales sobre el área vacía del logo */
+            align-items: center;
+            margin-bottom: 12px; 
+            height: 100px; 
+            pointer-events: none;
+            overflow: hidden;
         }
         .logo-wrapper { 
-            flex: 0 0 150px;
-            height: 88px; 
+            flex: 0 0 200px;
+            height: 100px; 
             overflow: hidden; 
             display: flex; 
             justify-content: center; 
@@ -78,9 +82,13 @@
             width: 100%; 
             height: 100%; 
             object-fit: contain; 
-            transform: scale(2.35);
+            transform: scale(1.9);
             transform-origin: center center;
             pointer-events: none;
+        }
+        /* Logo derecho un poco más grande */
+        .logos-registro .logo-wrapper:last-child img {
+            transform: scale(2.7);
         }
 
         .tabs-acceso { display: flex; justify-content: center; gap: 16px; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
@@ -266,15 +274,20 @@
                 box-sizing: border-box !important;
             }
             .logos-registro {
-                height: 78px !important;
+                height: 80px !important;
                 margin-bottom: 12px !important;
+                align-items: center !important;
+                overflow: hidden !important;
             }
             .logo-wrapper {
-                flex: 0 0 130px !important;
-                height: 78px !important;
+                flex: 0 0 145px !important;
+                height: 80px !important;
             }
             .logos-registro img {
-                transform: scale(2.1) !important;
+                transform: scale(1.7) !important;
+            }
+            .logos-registro .logo-wrapper:last-child img {
+                transform: scale(2.4) !important;
             }
             #pantalla-registro h2 {
                 font-size: 13px !important;
@@ -4872,7 +4885,7 @@
     var modoPoligonoActivo = 'puntos';
     var _dibujoManoActivo = false;
     var _dibujoManoIniciado = false;
-    var _dibujoManoPulsando = false; // dedo/mouse presionado
+    var _dibujoManoPulsando = false;
     var _puntosMano = [];
     var _lineaPreviewMano = null;
     var _marcadorInicioMano = null;
@@ -4882,7 +4895,7 @@
     var _ultimoPuntoPantallaMano = null;
     var _umbralCierrePx = 28;
     var _margenAutoPanPx = 56;
-    var _maxAutoPanSpeed = 6; // px por frame (suave, no se dispara)
+    var _maxAutoPanSpeed = 6;
     var _toastTimerSig = null;
 
     /* === DESHACER / REHACER === */
@@ -5599,7 +5612,7 @@
         modoPoligonoActivo = modo || 'puntos';
         const ayuda = document.getElementById('ayuda-modo-poligono');
         if (modoPoligonoActivo === 'mano') {
-            if (ayuda) ayuda.textContent = 'En teléfono: mantén el dedo y arrastra el contorno. Si te acercas al borde, el mapa se mueve suave. Suelta cerca del punto verde para cerrar.';
+            if (ayuda) ayuda.textContent = 'En teléfono: mantén el dedo y arrastra. Cerca del borde el mapa se mueve suave. Suelta cerca del punto verde para cerrar.';
         } else {
             if (ayuda) ayuda.textContent = 'Toca cada esquina. Cierra el polígono con el botón ✔️.';
         }
@@ -5609,14 +5622,12 @@
             iniciarTrazado('pol');
         }
     }
-
     function simplificarYEnderezarPuntos(latlngs, toleranciaPx) {
         if (!map || !latlngs || latlngs.length < 3) return latlngs || [];
         toleranciaPx = toleranciaPx || 10;
         const pts = latlngs.map(function (ll) { return map.latLngToLayerPoint(ll); });
         function distPerp(p, a, b) {
-            const dx = b.x - a.x, dy = b.y - a.y;
-            const len2 = dx * dx + dy * dy;
+            const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
             if (len2 < 1e-6) return Math.hypot(p.x - a.x, p.y - a.y);
             const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
             return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
@@ -5640,53 +5651,34 @@
         for (let i = 1; i < simp.length; i++) {
             const a = simp[i - 1], b = simp[i];
             const ang = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-            const candidatos = [0, 90, -90, 180, -180];
             let mejor = ang, mejorDist = 999;
-            candidatos.forEach(function (c) {
-                let d = Math.abs(ang - c);
-                if (d > 180) d = 360 - d;
+            [0, 90, -90, 180, -180].forEach(function (c) {
+                let d = Math.abs(ang - c); if (d > 180) d = 360 - d;
                 if (d < mejorDist) { mejorDist = d; mejor = c; }
             });
-            if (mejorDist <= 22) {
-                if (Math.abs(mejor) === 90) simp[i] = L.point(a.x, b.y);
-                else simp[i] = L.point(b.x, a.y);
-            }
+            if (mejorDist <= 22) simp[i] = (Math.abs(mejor) === 90) ? L.point(a.x, b.y) : L.point(b.x, a.y);
         }
         if (simp.length >= 3) {
-            const dCierre = Math.hypot(simp[0].x - simp[simp.length - 1].x, simp[0].y - simp[simp.length - 1].y);
-            if (dCierre < toleranciaPx * 2.5) simp[simp.length - 1] = L.point(simp[0].x, simp[0].y);
+            const dC = Math.hypot(simp[0].x - simp[simp.length - 1].x, simp[0].y - simp[simp.length - 1].y);
+            if (dC < toleranciaPx * 2.5) simp[simp.length - 1] = L.point(simp[0].x, simp[0].y);
         }
         return simp.map(function (p) { return map.layerPointToLatLng(p); });
     }
-
     function detenerAutoPan() {
         _autoPanDir = { x: 0, y: 0 };
-        if (_autoPanRaf) {
-            try { cancelAnimationFrame(_autoPanRaf); } catch (e) {}
-            _autoPanRaf = null;
-        }
+        if (_autoPanRaf) { try { cancelAnimationFrame(_autoPanRaf); } catch (e) {} _autoPanRaf = null; }
     }
-
     function tickAutoPan() {
         _autoPanRaf = null;
-        if (!_dibujoManoPulsando || !_dibujoManoIniciado || !map) {
-            detenerAutoPan();
-            return;
-        }
-        const dx = _autoPanDir.x;
-        const dy = _autoPanDir.y;
-        if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) {
-            detenerAutoPan();
-            return;
-        }
+        if (!_dibujoManoPulsando || !_dibujoManoIniciado || !map) { detenerAutoPan(); return; }
+        const dx = _autoPanDir.x, dy = _autoPanDir.y;
+        if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) { detenerAutoPan(); return; }
         map.panBy([dx, dy], { animate: false });
-        // Añadir punto bajo el dedo mientras el mapa se mueve
         if (_ultimoPuntoPantallaMano) {
             try {
                 const ll = map.containerPointToLatLng(_ultimoPuntoPantallaMano);
                 const last = _puntosMano[_puntosMano.length - 1];
-                const p1 = map.latLngToLayerPoint(last);
-                const p2 = map.latLngToLayerPoint(ll);
+                const p1 = map.latLngToLayerPoint(last), p2 = map.latLngToLayerPoint(ll);
                 if (Math.hypot(p2.x - p1.x, p2.y - p1.y) >= 6) {
                     _puntosMano.push(ll);
                     if (_lineaPreviewMano) _lineaPreviewMano.setLatLngs(_puntosMano);
@@ -5695,231 +5687,136 @@
         }
         _autoPanRaf = requestAnimationFrame(tickAutoPan);
     }
-
-    function actualizarAutoPanSuave(containerPoint) {
-        if (!map || !_dibujoManoPulsando || !_dibujoManoIniciado) {
-            detenerAutoPan();
-            return;
-        }
-        const size = map.getSize();
-        const x = containerPoint.x, y = containerPoint.y;
-        const m = _margenAutoPanPx;
+    function actualizarAutoPanSuave(cp) {
+        if (!map || !_dibujoManoPulsando || !_dibujoManoIniciado) { detenerAutoPan(); return; }
+        const size = map.getSize(), m = _margenAutoPanPx;
         let dx = 0, dy = 0;
-
-        // Velocidad proporcional a qué tan cerca del borde (0 en el margen interno, max en el borde)
-        if (x < m) dx = -_maxAutoPanSpeed * (1 - x / m);
-        else if (x > size.x - m) dx = _maxAutoPanSpeed * (1 - (size.x - x) / m);
-        if (y < m) dy = -_maxAutoPanSpeed * (1 - y / m);
-        else if (y > size.y - m) dy = _maxAutoPanSpeed * (1 - (size.y - y) / m);
-
-        // Si el dedo se aleja del borde, frena enseguida
+        if (cp.x < m) dx = -_maxAutoPanSpeed * (1 - cp.x / m);
+        else if (cp.x > size.x - m) dx = _maxAutoPanSpeed * (1 - (size.x - cp.x) / m);
+        if (cp.y < m) dy = -_maxAutoPanSpeed * (1 - cp.y / m);
+        else if (cp.y > size.y - m) dy = _maxAutoPanSpeed * (1 - (size.y - cp.y) / m);
         _autoPanDir = { x: dx, y: dy };
-        if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) {
-            detenerAutoPan();
-            return;
-        }
+        if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) { detenerAutoPan(); return; }
         if (!_autoPanRaf) _autoPanRaf = requestAnimationFrame(tickAutoPan);
     }
-
     function detenerDibujoMano() {
-        _dibujoManoActivo = false;
-        _dibujoManoIniciado = false;
-        _dibujoManoPulsando = false;
-        _puntosMano = [];
-        _ultimoPuntoPantallaMano = null;
-        detenerAutoPan();
-        if (_lineaPreviewMano && map) {
-            try { map.removeLayer(_lineaPreviewMano); } catch (e) {}
-            _lineaPreviewMano = null;
-        }
-        if (_marcadorInicioMano && map) {
-            try { map.removeLayer(_marcadorInicioMano); } catch (e) {}
-            _marcadorInicioMano = null;
-        }
+        _dibujoManoActivo = false; _dibujoManoIniciado = false; _dibujoManoPulsando = false;
+        _puntosMano = []; _ultimoPuntoPantallaMano = null; detenerAutoPan();
+        if (_lineaPreviewMano && map) { try { map.removeLayer(_lineaPreviewMano); } catch (e) {} _lineaPreviewMano = null; }
+        if (_marcadorInicioMano && map) { try { map.removeLayer(_marcadorInicioMano); } catch (e) {} _marcadorInicioMano = null; }
         if (_handlersMano && map) {
             try {
-                map.off('mousedown', _handlersMano.down);
-                map.off('mousemove', _handlersMano.move);
-                map.off('mouseup', _handlersMano.up);
-                map.off('touchstart', _handlersMano.down);
-                map.off('touchmove', _handlersMano.move);
-                map.off('touchend', _handlersMano.up);
-                map.off('touchcancel', _handlersMano.up);
+                map.off('mousedown', _handlersMano.down); map.off('mousemove', _handlersMano.move); map.off('mouseup', _handlersMano.up);
+                map.off('touchstart', _handlersMano.down); map.off('touchmove', _handlersMano.move);
+                map.off('touchend', _handlersMano.up); map.off('touchcancel', _handlersMano.up);
             } catch (e2) {}
             _handlersMano = null;
         }
         try { if (map && map.dragging) map.dragging.enable(); } catch (e3) {}
-        try {
-            const c = map && map.getContainer();
-            if (c) c.style.touchAction = '';
-        } catch (e4) {}
+        try { const c = map && map.getContainer(); if (c) c.style.touchAction = ''; } catch (e4) {}
     }
-
     function finalizarPoligonoMano() {
         if (!_dibujoManoIniciado || _puntosMano.length < 4) {
-            detenerDibujoMano();
-            tipoDeTrazadoActivo = '';
+            detenerDibujoMano(); tipoDeTrazadoActivo = '';
             document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-            ocultarBotonesTrazado();
-            activarMano();
+            ocultarBotonesTrazado(); activarMano();
             if (typeof mostrarToast === 'function') mostrarToast('Trazo muy corto. Intenta de nuevo.', 'aviso');
             return;
         }
-        const pts = _puntosMano.slice();
-        pts.push(pts[0]);
+        const pts = _puntosMano.slice(); pts.push(pts[0]);
         const limpios = simplificarYEnderezarPuntos(pts, 12);
         detenerDibujoMano();
         if (!limpios || limpios.length < 3) {
-            tipoDeTrazadoActivo = '';
-            document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-            ocultarBotonesTrazado();
-            activarMano();
-            if (typeof mostrarToast === 'function') mostrarToast('No se pudo formar el polígono.', 'aviso');
-            return;
+            tipoDeTrazadoActivo = ''; document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
+            ocultarBotonesTrazado(); activarMano(); return;
         }
         const col = (document.getElementById('colorPol') && document.getElementById('colorPol').value) || '#ff0000';
         const fill = document.getElementById('checkRelleno') ? document.getElementById('checkRelleno').checked : true;
-        const pol = L.polygon(limpios, {
-            color: col, fillColor: col, fillOpacity: fill ? 0.4 : 0, weight: 4
-        }).addTo(map);
-        tipoDeTrazadoActivo = 'pol';
-        trazandoAhora = null;
+        const pol = L.polygon(limpios, { color: col, fillColor: col, fillOpacity: fill ? 0.4 : 0, weight: 4 }).addTo(map);
+        tipoDeTrazadoActivo = 'pol'; trazandoAhora = null;
         const registrado = registrarObjeto(pol);
         try { if (pol.disableEdit) pol.disableEdit(); } catch (e) {}
-        activarMano();
-        tipoDeTrazadoActivo = '';
+        activarMano(); tipoDeTrazadoActivo = '';
         document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-        ocultarBotonesTrazado();
-        guardarProgresoMapa();
+        ocultarBotonesTrazado(); guardarProgresoMapa();
         if (registrado && typeof mostrarToast === 'function') mostrarToast('✅ Polígono cerrado y enderezado');
     }
-
     function iniciarDibujoManoPoligono() {
-        detenerDibujoMano();
-        if (!map) return;
-        _dibujoManoActivo = true;
-        _dibujoManoIniciado = false;
-        _dibujoManoPulsando = false;
+        detenerDibujoMano(); if (!map) return;
+        _dibujoManoActivo = true; _dibujoManoIniciado = false; _dibujoManoPulsando = false;
         tipoDeTrazadoActivo = 'pol';
         document.getElementById('btnFinalizar').style.display = 'none';
         document.getElementById('btnCancelarTrazado').style.display = 'flex';
-        try {
-            const c = map.getContainer();
-            if (c) c.style.touchAction = 'none'; // evita scroll del navegador mientras se dibuja
-        } catch (e0) {}
-        if (typeof mostrarToast === 'function') {
-            mostrarToast('✏️ Mantén el dedo y arrastra. Suelta cerca del punto verde para cerrar.', 'aviso');
-        }
-
+        try { const c = map.getContainer(); if (c) c.style.touchAction = 'none'; } catch (e0) {}
+        if (typeof mostrarToast === 'function') mostrarToast('✏️ Mantén el dedo y arrastra. Suelta cerca del punto verde para cerrar.', 'aviso');
         function puntoDesdeEvento(e) {
             const oe = e.originalEvent || e;
             if (oe && oe.touches && oe.touches[0]) {
-                const rect = map.getContainer().getBoundingClientRect();
-                return {
-                    container: L.point(oe.touches[0].clientX - rect.left, oe.touches[0].clientY - rect.top),
-                    latlng: map.containerPointToLatLng(L.point(oe.touches[0].clientX - rect.left, oe.touches[0].clientY - rect.top))
-                };
-            }
-            if (oe && oe.changedTouches && oe.changedTouches[0]) {
-                const rect = map.getContainer().getBoundingClientRect();
-                const cp = L.point(oe.changedTouches[0].clientX - rect.left, oe.changedTouches[0].clientY - rect.top);
+                const r = map.getContainer().getBoundingClientRect();
+                const cp = L.point(oe.touches[0].clientX - r.left, oe.touches[0].clientY - r.top);
                 return { container: cp, latlng: map.containerPointToLatLng(cp) };
             }
-            if (e.latlng && e.containerPoint) {
-                return { container: e.containerPoint, latlng: e.latlng };
+            if (oe && oe.changedTouches && oe.changedTouches[0]) {
+                const r = map.getContainer().getBoundingClientRect();
+                const cp = L.point(oe.changedTouches[0].clientX - r.left, oe.changedTouches[0].clientY - r.top);
+                return { container: cp, latlng: map.containerPointToLatLng(cp) };
             }
+            if (e.latlng && e.containerPoint) return { container: e.containerPoint, latlng: e.latlng };
             if (oe && typeof oe.clientX === 'number') {
-                const rect = map.getContainer().getBoundingClientRect();
-                const cp = L.point(oe.clientX - rect.left, oe.clientY - rect.top);
+                const r = map.getContainer().getBoundingClientRect();
+                const cp = L.point(oe.clientX - r.left, oe.clientY - r.top);
                 return { container: cp, latlng: map.containerPointToLatLng(cp) };
             }
             return null;
         }
-
         function marcarInicio(ll) {
-            _dibujoManoIniciado = true;
-            _puntosMano = [ll];
+            _dibujoManoIniciado = true; _puntosMano = [ll];
             if (_marcadorInicioMano) { try { map.removeLayer(_marcadorInicioMano); } catch (e) {} }
-            _marcadorInicioMano = L.circleMarker(ll, {
-                radius: 9, color: '#B4D445', fillColor: '#B4D445', fillOpacity: 0.95, weight: 2
-            }).addTo(map);
+            _marcadorInicioMano = L.circleMarker(ll, { radius: 9, color: '#B4D445', fillColor: '#B4D445', fillOpacity: 0.95, weight: 2 }).addTo(map);
             if (_lineaPreviewMano) { try { map.removeLayer(_lineaPreviewMano); } catch (e2) {} }
             _lineaPreviewMano = L.polyline(_puntosMano, { color: '#B4D445', weight: 3, dashArray: '6 4' }).addTo(map);
         }
-
         const onDown = function (e) {
             if (!_dibujoManoActivo) return;
             try { L.DomEvent.preventDefault(e); L.DomEvent.stopPropagation(e); } catch (err) {}
             try { if (map.dragging) map.dragging.disable(); } catch (err2) {}
-            const info = puntoDesdeEvento(e);
-            if (!info || !info.latlng) return;
-            _dibujoManoPulsando = true;
-            _ultimoPuntoPantallaMano = info.container;
-
-            if (!_dibujoManoIniciado) {
-                marcarInicio(info.latlng);
-                return;
-            }
-            // Continuar trazo desde donde está el dedo
-            _puntosMano.push(info.latlng);
-            if (_lineaPreviewMano) _lineaPreviewMano.setLatLngs(_puntosMano);
+            const info = puntoDesdeEvento(e); if (!info || !info.latlng) return;
+            _dibujoManoPulsando = true; _ultimoPuntoPantallaMano = info.container;
+            if (!_dibujoManoIniciado) { marcarInicio(info.latlng); return; }
+            _puntosMano.push(info.latlng); if (_lineaPreviewMano) _lineaPreviewMano.setLatLngs(_puntosMano);
         };
-
         const onMove = function (e) {
             if (!_dibujoManoActivo || !_dibujoManoIniciado || !_dibujoManoPulsando) return;
             try { L.DomEvent.preventDefault(e); } catch (err) {}
-            const info = puntoDesdeEvento(e);
-            if (!info || !info.latlng) return;
+            const info = puntoDesdeEvento(e); if (!info || !info.latlng) return;
             _ultimoPuntoPantallaMano = info.container;
-
-            // Auto-pan suave (solo mientras el dedo está cerca del borde)
             actualizarAutoPanSuave(info.container);
-
             const last = _puntosMano[_puntosMano.length - 1];
-            const p1 = map.latLngToLayerPoint(last);
-            const p2 = map.latLngToLayerPoint(info.latlng);
+            const p1 = map.latLngToLayerPoint(last), p2 = map.latLngToLayerPoint(info.latlng);
             if (Math.hypot(p2.x - p1.x, p2.y - p1.y) < 6) return;
-            _puntosMano.push(info.latlng);
-            if (_lineaPreviewMano) _lineaPreviewMano.setLatLngs(_puntosMano);
-
-            // Cerrar si vuelve al inicio con el dedo aún abajo
+            _puntosMano.push(info.latlng); if (_lineaPreviewMano) _lineaPreviewMano.setLatLngs(_puntosMano);
             if (_puntosMano.length >= 8) {
                 try {
                     const p0 = map.latLngToContainerPoint(_puntosMano[0]);
-                    if (Math.hypot(info.container.x - p0.x, info.container.y - p0.y) <= _umbralCierrePx) {
-                        finalizarPoligonoMano();
-                    }
+                    if (Math.hypot(info.container.x - p0.x, info.container.y - p0.y) <= _umbralCierrePx) finalizarPoligonoMano();
                 } catch (e3) {}
             }
         };
-
         const onUp = function (e) {
             if (!_dibujoManoActivo) return;
-            _dibujoManoPulsando = false;
-            detenerAutoPan(); // al soltar o cambiar dirección lejos del borde, se detiene
+            _dibujoManoPulsando = false; detenerAutoPan();
             try { if (map.dragging) map.dragging.enable(); } catch (err) {}
-
             if (!_dibujoManoIniciado || _puntosMano.length < 4) return;
-
-            // Si suelta cerca del punto de inicio → cerrar polígono
             try {
                 const info = puntoDesdeEvento(e);
                 const p0 = map.latLngToContainerPoint(_puntosMano[0]);
                 const pC = info && info.container ? info.container : map.latLngToContainerPoint(_puntosMano[_puntosMano.length - 1]);
-                if (Math.hypot(pC.x - p0.x, pC.y - p0.y) <= _umbralCierrePx + 8) {
-                    finalizarPoligonoMano();
-                }
+                if (Math.hypot(pC.x - p0.x, pC.y - p0.y) <= _umbralCierrePx + 8) finalizarPoligonoMano();
             } catch (e4) {}
         };
-
         _handlersMano = { down: onDown, move: onMove, up: onUp };
-        map.on('mousedown', onDown);
-        map.on('mousemove', onMove);
-        map.on('mouseup', onUp);
-        map.on('touchstart', onDown);
-        map.on('touchmove', onMove);
-        map.on('touchend', onUp);
-        map.on('touchcancel', onUp);
+        map.on('mousedown', onDown); map.on('mousemove', onMove); map.on('mouseup', onUp);
+        map.on('touchstart', onDown); map.on('touchmove', onMove); map.on('touchend', onUp); map.on('touchcancel', onUp);
     }
 
     function iniciarTrazado(tipo) {
@@ -5930,48 +5827,35 @@
             try { detenerDibujoMano(); } catch (eM) {}
             try { map.editTools.stopDrawing(); } catch (e) {
                 try { if (trazandoAhora) map.removeLayer(trazandoAhora); } catch (e2) {}
-                _cancelarTrazadoActivo = false;
-                trazandoAhora = null;
-                tipoDeTrazadoActivo = "";
-                ocultarBotonesTrazado();
+                _cancelarTrazadoActivo = false; trazandoAhora = null; tipoDeTrazadoActivo = ""; ocultarBotonesTrazado();
             }
             if (typeof mostrarToast === 'function') mostrarToast('Trazo anterior descartado (usa ✔️ para guardar)', 'aviso');
         }
         deseleccionarTodo();
-        emojiActual = null; 
-        modoNavegar = true; 
-        document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); 
+        emojiActual = null; modoNavegar = true;
+        document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active'));
         document.getElementById('floatMano').classList.add('activo-float');
-
-        tipoDeTrazadoActivo = tipo; 
-
+        tipoDeTrazadoActivo = tipo;
         document.getElementById('opciones-poligono').style.display = 'none';
         document.getElementById('opciones-linea').style.display = 'none';
         document.getElementById('opciones-evac').style.display = 'none';
-
-        if(tipo === 'pol') { 
-            document.getElementById('desplegable-riesgos-trazado').style.display = 'flex'; 
+        if (tipo === 'pol') {
+            document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
             document.getElementById('opciones-poligono').style.display = 'flex';
             const modoSel = document.getElementById('modoPoligono');
             modoPoligonoActivo = (modoSel && modoSel.value) ? modoSel.value : 'puntos';
-            if (modoPoligonoActivo === 'mano') {
-                iniciarDibujoManoPoligono();
-            } else {
-                map.editTools.startPolygon(); 
-            }
+            if (modoPoligonoActivo === 'mano') iniciarDibujoManoPoligono();
+            else map.editTools.startPolygon();
         } else if (tipo === 'evac') {
             document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
             document.getElementById('opciones-evac').style.display = 'flex';
             map.editTools.startPolyline();
-        } else { 
+        } else {
             document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
             document.getElementById('opciones-linea').style.display = 'flex';
-            try {
-                const selL = document.getElementById('selectTipoLinea');
-                if (selL) aplicarPresetTipoLinea(selL.value);
-            } catch (ePre) {}
-            map.editTools.startPolyline(); 
-        } 
+            try { const selL = document.getElementById('selectTipoLinea'); if (selL) aplicarPresetTipoLinea(selL.value); } catch (ePre) {}
+            map.editTools.startPolyline();
+        }
     }
 
     function ocultarBotonesTrazado() {
