@@ -1324,7 +1324,7 @@ else if(window.addEventListener)document.addEventListener("DOMContentLoaded",c)
 else{var e=document.onreadystatechange||function(){}
 document.onreadystatechange=function(b){e(b),"loading"!==document.readyState&&(document.onreadystatechange=e,c())}}}}()
 
-</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a488d0c84b94e1ca',t:'MTc5MTY2ODc2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a488f3613e88b887',t:'MTc5MTY3MDE4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 istener('touchend', schedule, { passive: true });
         window.addEventListener('orientationchange', function () {
@@ -1396,5 +1396,80 @@ map.on("popupopen",function(e){try{aplicar(e.popup&&e.popup._source,e.popup)}cat
     window.guardarProgresoMapa = function () { if (t) clearTimeout(t); t = setTimeout(flush, 800); };
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(); });
+})();
+</script>
+
+<script id="poligono-lineal">
+/* Dibujo de polígono: mientras se traza es una línea abierta punto por punto con
+   predicción punteada hasta el cursor; el relleno aparece al terminar. */
+(function () {
+    function esperar() {
+        if (typeof map === 'undefined' || !map || !map.editTools) return setTimeout(esperar, 300);
+        map.on('editable:drawing:start', function (e) {
+            if (e.layer && e.layer instanceof L.Polygon) {
+                e.layer.setStyle({ fill: false, dashArray: '6 6' });
+            }
+        });
+        map.on('editable:drawing:end', function (e) {
+            var l = e.layer;
+            if (l && l instanceof L.Polygon) {
+                var conRelleno = (l.options.fillOpacity || 0) > 0;
+                l.setStyle({ fill: conRelleno, dashArray: null });
+            }
+        });
+    }
+    esperar();
+})();
+</script>
+
+<script id="poligono-cierre-linea">
+/* Polígono: se traza como línea recta punto por punto (sin línea de cierre cruzando);
+   al tocar el punto de salida se cierra y se convierte en polígono. */
+(function () {
+    var UMBRAL_PX = 14;
+    function distPx(a, b) { return map.latLngToContainerPoint(a).distanceTo(map.latLngToContainerPoint(b)); }
+    function esperar() {
+        if (typeof map === 'undefined' || !map || !map.editTools) return setTimeout(esperar, 300);
+        var et = map.editTools;
+        var startPolyOrig = et.startPolyline;
+        et.startPolygon = function () {
+            window.__polyDraft = true;
+            return startPolyOrig.apply(et, arguments);
+        };
+        map.on('editable:drawing:click', function (e) {
+            if (!window.__polyDraft || !e.layer || !e.layer.getLatLngs) return;
+            var ll = e.layer.getLatLngs();
+            if (ll.length >= 3 && distPx(ll[0], e.latlng) < UMBRAL_PX) {
+                if (typeof et.commitDrawing === 'function') et.commitDrawing();
+                else if (typeof et.stopDrawing === 'function') et.stopDrawing();
+            }
+        });
+        map.on('editable:vertex:click', function (e) {
+            if (!window.__polyDraft || !e.vertex) return;
+            var idx = (typeof e.vertex.getIndex === 'function') ? e.vertex.getIndex() : -1;
+            var feat = e.vertex.editor && e.vertex.editor.feature;
+            var n = (feat && feat.getLatLngs) ? feat.getLatLngs().length : 0;
+            if (idx === 0 && n >= 3) {
+                if (typeof et.commitDrawing === 'function') et.commitDrawing();
+                else if (typeof et.stopDrawing === 'function') et.stopDrawing();
+            }
+        });
+        var fireOrig = map.fire;
+        map.fire = function (type, data, prop) {
+            if (type === 'editable:drawing:end' && window.__polyDraft && data && data.layer &&
+                data.layer instanceof L.Polyline && !(data.layer instanceof L.Polygon)) {
+                window.__polyDraft = false;
+                var linea = data.layer;
+                var pts = linea.getLatLngs().slice();
+                while (pts.length > 3 && distPx(pts[pts.length - 1], pts[0]) < UMBRAL_PX) pts.pop();
+                map.removeLayer(linea);
+                var poly = L.polygon(pts, { color: '#ff0000', weight: 4, fill: false });
+                map.addLayer(poly);
+                data = Object.assign({}, data, { layer: poly });
+            }
+            return fireOrig.call(this, type, data, prop);
+        };
+    }
+    esperar();
 })();
 </script>
