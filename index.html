@@ -426,7 +426,11 @@
             transform-origin: center center;
             filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
             pointer-events: none;
-        } 
+        }
+        .logo-box.logo-left { width: 220px; overflow: visible; }
+        .logo-box.logo-left img { filter: none !important; }
+        .logo-box.logo-right { width: 190px; overflow: visible; }
+        .logo-box.logo-right img { transform: scale(2.7); } 
 
         #titulo-principal {
             font-size: 24px;
@@ -2354,7 +2358,7 @@
                             const gel = capa._glowResaltado._path || (capa._glowResaltado.getElement && capa._glowResaltado.getElement());
                             if (gel && gel.classList) gel.classList.add('polyline-resaltado-glow');
                         } catch (eG2) {}
-                        if (capa._glowResaltado.bringToBack) capa._glowResaltado.bringToBack();
+                        try { asegurarPoligonosAlFondo(); } catch (eO) {}
                     } catch (eGlow) { console.warn('glow:', eGlow); }
                     // Línea principal: MISMO color, solo un poco más gruesa + clase de brillo suave
                     capa.setStyle({
@@ -3745,8 +3749,12 @@
     }
 
     function refrescarPopup(layer) {
-        if (layer.getPopup()) { layer.setPopupContent(generarPopupHTML(layer)); }
-        else { layer.bindPopup(generarPopupHTML(layer)); }
+        if (layer.getPopup()) {
+            layer.setPopupContent(generarPopupHTML(layer));
+            try { layer.getPopup().options.autoPan = false; } catch (e) {}
+        } else {
+            layer.bindPopup(generarPopupHTML(layer), { autoPan: false, closeOnClick: false });
+        }
     }
 
     function renombrarElemento(idCapa) {
@@ -3917,13 +3925,13 @@
                 if (popupContenido) {
                     layer.bindPopup(popupContenido);
                 } else {
-                    layer.bindPopup(generarPopupHTML(layer));
+                    layer.bindPopup(generarPopupHTML(layer), { autoPan: false, closeOnClick: false });
                 }
 
                 if (layer.tipoId === 'ruta_evacuacion' && layer instanceof L.Polyline) {
                     layer.colorEvac = feature.properties.colorEvac || '#00FF00';
                     layer.grosorEvac = feature.properties.grosorEvac || 6;
-                    layer.setStyle({ color: layer.colorEvac, weight: 14, opacity: 0.01, fill: false });
+                    layer.setStyle({ color: layer.colorEvac, weight: 0, fill: false });
                     recrearFlechasRuta(layer);
                 } else if (esLineaTecnica(layer.tipoId) && layer instanceof L.Polyline) {
                     // Compatibilidad: mapas antiguos con tipoId genérico 'linea_tecnica'
@@ -3950,19 +3958,15 @@
                     L.DomEvent.stopPropagation(ev);
                     if (emojiActual && !modoNavegar) {
                         crearIcono(ev.latlng);
-                        // Solo colocar el icono: impedir que se abran las especificaciones del polígono/línea
                         try { layer.closePopup(); } catch (eCP) {}
                         setTimeout(function () { try { map.closePopup(); } catch (eCP2) {} }, 0);
                     } else {
-                        deseleccionarTodo(); 
-                        objetoSeleccionado = layer;
-                        if (layer.enableEdit) layer.enableEdit();
-                        try { armarApagadoVertices(layer); } catch (eT) {}
                         if (layer.tipoId === 'recicladores') { 
                             alternarLeyendaRecicladores(); 
                             if(layer.datosReciclador) restaurarCamposReciclador(layer.datosReciclador); 
                         }
-                        layer.openPopup();
+                        // Descripción centrada sin mover mapa + vértices para editar
+                        seleccionarCapaEnMapa(layer, ev.latlng);
                     }
                 });
 
@@ -3986,7 +3990,7 @@
             },
             style: function (feature) { 
                 if (feature.properties.tipoId === 'ruta_evacuacion') {
-                    return { color: feature.properties.colorEvac || '#00FF00', weight: 14, opacity: 0.01, fill: false };
+                    return { color: feature.properties.colorEvac || '#00FF00', weight: 0, fill: false };
                 }
                 if (esLineaTecnica(feature.properties.tipoId)) {
                     const pr = obtenerPresetLinea(feature.properties.tipoId);
@@ -4403,28 +4407,47 @@
     }
 
 
-    /** Envía todos los polígonos al fondo del mapa para que líneas, vías e iconos capturen los clics encima. */
+    /**
+     * Orden de capas (de abajo hacia arriba):
+     *   1) Trazar SECTOR (negro)            -> fondo
+     *   2) Riesgos (rojo / naranja / amarillo y personalizados)
+     *   3) Líneas técnicas y vías de evacuación
+     *   4) Iconos (markerPane, siempre encima por Leaflet)
+     * Dentro de cada grupo se respeta el orden de creación.
+     * El halo (_glowResaltado) de un elemento se mantiene justo debajo de su dueño.
+     */
+    function esPoligonoSector(el) {
+        if (!el) return false;
+        const id = el.tipoId || (el.feature && el.feature.properties ? el.feature.properties.tipoId : null);
+        if (id !== 'poligono_riesgo') return false;
+        const col = (el.options && el.options.color) ? String(el.options.color).toLowerCase() : '';
+        if (col === '#000000' || col === '#000' || col === 'black') return true;
+        return /SECTOR DELIMITADO/i.test(el.nombrePersonalizado || '');
+    }
+    function rangoCapaMapa(el) {
+        if (!el) return -1;
+        const id = el.tipoId || (el.feature && el.feature.properties ? el.feature.properties.tipoId : '') || '';
+        if (id === 'poligono_riesgo') return esPoligonoSector(el) ? 0 : 1;
+        if (id === 'ruta_evacuacion' || (typeof esLineaTecnica === 'function' && esLineaTecnica(id))) return 2;
+        return -1; // iconos, marcadores y otros: no se tocan (ya van en markerPane, encima)
+    }
     function asegurarPoligonosAlFondo() {
         if (!map) return;
         try {
-            (stackElementos || []).forEach(function (el) {
-                if (!el) return;
-                const id = el.tipoId || '';
-                if (id === 'poligono_riesgo') {
-                    try {
-                        if (typeof el.bringToBack === 'function') el.bringToBack();
-                    } catch (e) {}
-                }
-            });
-            // Líneas y vías por encima de polígonos
-            (stackElementos || []).forEach(function (el) {
-                if (!el) return;
-                const id = el.tipoId || '';
-                if (id === 'ruta_evacuacion' || (typeof esLineaTecnica === 'function' && esLineaTecnica(id)) || (id && String(id).indexOf('lin_') === 0)) {
-                    try {
-                        if (typeof el.bringToFront === 'function') el.bringToFront();
-                    } catch (e) {}
-                }
+            const capas = (stackElementos || [])
+                .filter(function (el) { return el && rangoCapaMapa(el) >= 0 && map.hasLayer(el); })
+                .map(function (el, i) { return { el: el, r: rangoCapaMapa(el), i: i }; })
+                .sort(function (a, b) { return (a.r - b.r) || (a.i - b.i); });
+
+            capas.forEach(function (c) {
+                const el = c.el;
+                try {
+                    if (typeof el.bringToFront === 'function') el.bringToFront();
+                    if (el._glowResaltado && map.hasLayer(el._glowResaltado)) {
+                        el._glowResaltado.bringToFront();
+                        el.bringToFront();   // el queda encima de su halo
+                    }
+                } catch (e) {}
             });
         } catch (e) { console.warn('asegurarPoligonosAlFondo:', e); }
     }
@@ -4860,19 +4883,6 @@
     var objetoSeleccionado = null, trazandoAhora = null, tipoDeTrazadoActivo = "";
     var _cancelarTrazadoActivo = false;
     var _toastTimerSig = null;
-    var _trazoPuntosActivo = false;
-    var _trazoPuntosTipo = '';
-    var _trazoPuntos = [];
-    var _trazoLinea = null;
-    var _trazoGuia = null;
-    var _trazoEvacPreview = null;
-    var _trazoMarcadores = [];
-    var _trazoInicioMarker = null;
-    var _trazoHandlers = null;
-    var _trazoUltimoCursor = null;
-    var _trazoFlechasTimer = null;
-    var _umbralCierreTrazoPx = 28;
-    var _trazoIgnorarClickHasta = 0;
 
     /* === DESHACER / REHACER === */
     var _temporizadorApagadoVertices = null;
@@ -5584,259 +5594,50 @@
         }
     }
 
-    function limpiarPreviewTrazoPuntos() {
-        if (_trazoEvacPreview && map) {
-            try { if (_trazoEvacPreview._decoradorFlechas) map.removeLayer(_trazoEvacPreview._decoradorFlechas); } catch (e0) {}
-            try { map.removeLayer(_trazoEvacPreview); } catch (e1) {}
-            _trazoEvacPreview = null;
-        }
-        if (_trazoLinea && map) { try { map.removeLayer(_trazoLinea); } catch (e) {} }
-        _trazoLinea = null;
-        if (_trazoGuia && map) { try { map.removeLayer(_trazoGuia); } catch (e) {} }
-        _trazoGuia = null;
-        if (_trazoInicioMarker && map) { try { map.removeLayer(_trazoInicioMarker); } catch (e) {} }
-        _trazoInicioMarker = null;
-        (_trazoMarcadores || []).forEach(function (m) { try { if (map) map.removeLayer(m); } catch (e2) {} });
-        _trazoMarcadores = [];
-        _trazoPuntos = [];
-        _trazoUltimoCursor = null;
-        if (_trazoFlechasTimer) { try { clearTimeout(_trazoFlechasTimer); } catch (e3) {} _trazoFlechasTimer = null; }
-    }
-    function detenerTrazoPuntos() {
-        _trazoPuntosActivo = false;
-        _trazoPuntosTipo = '';
-        if (_trazoHandlers && map) {
-            try {
-                map.off('click', _trazoHandlers.click);
-                map.off('mousemove', _trazoHandlers.move);
-                map.off('touchmove', _trazoHandlers.move);
-            } catch (e) {}
-            _trazoHandlers = null;
-        }
-        limpiarPreviewTrazoPuntos();
-    }
-    function colorGrosorEvacActual() {
-        return {
-            color: (document.getElementById('colorEvac') && document.getElementById('colorEvac').value) || '#00FF00',
-            grosor: parseInt(document.getElementById('grosorEvac') && document.getElementById('grosorEvac').value) || 6
-        };
-    }
-    function actualizarPreviewFlechasEvac(incluirCursor) {
-        if (!_trazoPuntosActivo || _trazoPuntosTipo !== 'evac' || !map) return;
-        if (_trazoPuntos.length < 1) return;
-        const pts = _trazoPuntos.slice();
-        if (incluirCursor && _trazoUltimoCursor) pts.push(_trazoUltimoCursor);
-        if (pts.length < 2) return;
-        const est = colorGrosorEvacActual();
-        if (!_trazoEvacPreview) {
-            _trazoEvacPreview = L.polyline(pts, {
-                color: est.color, weight: 14, opacity: 0.01, interactive: false
-            }).addTo(map);
-        } else {
-            _trazoEvacPreview.setLatLngs(pts);
-        }
-        _trazoEvacPreview.colorEvac = est.color;
-        _trazoEvacPreview.grosorEvac = est.grosor;
-        // Flechas NO interactivas para que el clic llegue al mapa y fije el punto
-        try { recrearFlechasRuta(_trazoEvacPreview, { interactive: false }); } catch (e) {}
-    }
-    function programarPreviewFlechasEvac() {
-        if (_trazoFlechasTimer) return;
-        _trazoFlechasTimer = setTimeout(function () {
-            _trazoFlechasTimer = null;
-            actualizarPreviewFlechasEvac(true);
-        }, 40);
-    }
-    function finalizarTrazoPuntos() {
-        const tipo = _trazoPuntosTipo;
-        const pts = (_trazoPuntos || []).slice();
-        if (tipo === 'pol' && pts.length < 3) {
-            detenerTrazoPuntos();
-            tipoDeTrazadoActivo = '';
-            document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-            ocultarBotonesTrazado(); activarMano();
-            if (typeof mostrarToast === 'function') mostrarToast('Se necesitan al menos 3 puntos', 'aviso');
-            return;
-        }
-        if (tipo === 'evac' && pts.length < 2) {
-            detenerTrazoPuntos();
-            tipoDeTrazadoActivo = '';
-            document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-            ocultarBotonesTrazado(); activarMano();
-            if (typeof mostrarToast === 'function') mostrarToast('Se necesitan al menos 2 puntos', 'aviso');
-            return;
-        }
-        detenerTrazoPuntos();
-        let capa = null;
-        if (tipo === 'pol') {
-            const ring = pts.slice(); ring.push(ring[0]);
-            const col = (document.getElementById('colorPol') && document.getElementById('colorPol').value) || '#ff0000';
-            const fill = document.getElementById('checkRelleno') ? document.getElementById('checkRelleno').checked : true;
-            capa = L.polygon(ring, { color: col, fillColor: col, fillOpacity: fill ? 0.4 : 0, weight: 4 }).addTo(map);
-        } else {
-            const est = colorGrosorEvacActual();
-            capa = L.polyline(pts, { color: est.color, weight: 14, opacity: 0.01, interactive: true }).addTo(map);
-        }
-        tipoDeTrazadoActivo = tipo;
-        trazandoAhora = null;
-        const registrado = registrarObjeto(capa);
-        try { if (capa && capa.disableEdit) capa.disableEdit(); } catch (e) {}
-        activarMano();
-        tipoDeTrazadoActivo = '';
-        document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-        ocultarBotonesTrazado();
-        try { guardarProgresoMapa(); } catch (eG) {}
-        if (registrado && typeof mostrarToast === 'function') {
-            mostrarToast(tipo === 'pol' ? '✅ Polígono cerrado' : '✅ Vía de evacuación lista');
-        }
-    }
-    function iniciarTrazoPuntos(tipo) {
-        detenerTrazoPuntos();
-        if (!map) return;
-        _trazoPuntosActivo = true;
-        _trazoPuntosTipo = tipo;
-        tipoDeTrazadoActivo = tipo;
-        document.getElementById('btnFinalizar').style.display = 'flex';
-        document.getElementById('btnCancelarTrazado').style.display = 'flex';
-        if (typeof mostrarToast === 'function') {
-            mostrarToast(tipo === 'pol'
-                ? '📐 Toca para colocar puntos. Vuelve al verde o ✔️ para cerrar.'
-                : '🟩 Toca para colocar cada punto de la vía. Las flechas se estiran. ✔️ o toca el último punto para terminar.', 'aviso');
-        }
-
-        function latlngDesdeEvento(e) {
-            if (e && e.latlng) return e.latlng;
-            const oe = (e && e.originalEvent) || e;
-            if (oe && oe.touches && oe.touches[0]) {
-                const r = map.getContainer().getBoundingClientRect();
-                return map.containerPointToLatLng(L.point(oe.touches[0].clientX - r.left, oe.touches[0].clientY - r.top));
-            }
-            if (oe && typeof oe.clientX === 'number') {
-                const r = map.getContainer().getBoundingClientRect();
-                return map.containerPointToLatLng(L.point(oe.clientX - r.left, oe.clientY - r.top));
-            }
-            return null;
-        }
-
-        function agregarPunto(ll) {
-            if (!ll) return;
-            // Cerrar polígono al tocar inicio
-            if (_trazoPuntosTipo === 'pol' && _trazoPuntos.length >= 3) {
-                try {
-                    const p0 = map.latLngToContainerPoint(_trazoPuntos[0]);
-                    const pC = map.latLngToContainerPoint(ll);
-                    if (Math.hypot(pC.x - p0.x, pC.y - p0.y) <= _umbralCierreTrazoPx) {
-                        finalizarTrazoPuntos();
-                        return;
-                    }
-                } catch (err) {}
-            }
-            // Finalizar vía al tocar de nuevo el último punto
-            if (_trazoPuntosTipo === 'evac' && _trazoPuntos.length >= 2) {
-                try {
-                    const pL = map.latLngToContainerPoint(_trazoPuntos[_trazoPuntos.length - 1]);
-                    const pC = map.latLngToContainerPoint(ll);
-                    if (Math.hypot(pC.x - pL.x, pC.y - pL.y) <= _umbralCierreTrazoPx) {
-                        finalizarTrazoPuntos();
-                        return;
-                    }
-                } catch (err2) {}
-            }
-
-            _trazoPuntos.push(ll);
-            _trazoUltimoCursor = ll;
-
-            if (_trazoPuntosTipo === 'pol') {
-                if (_trazoLinea) _trazoLinea.setLatLngs(_trazoPuntos);
-                else _trazoLinea = L.polyline(_trazoPuntos, { color: '#B4D445', weight: 3, opacity: 1, interactive: false }).addTo(map);
-                if (_trazoGuia) { try { map.removeLayer(_trazoGuia); } catch (eG) {} _trazoGuia = null; }
-            } else {
-                actualizarPreviewFlechasEvac(false);
-            }
-
-            // Marcadores NO interactivas para no bloquear el siguiente clic
-            const mk = L.circleMarker(ll, {
-                radius: 5, color: '#B4D445', fillColor: '#fff', fillOpacity: 1, weight: 2,
-                interactive: false
-            }).addTo(map);
-            _trazoMarcadores.push(mk);
-            if (_trazoPuntos.length === 1) {
-                if (_trazoInicioMarker) { try { map.removeLayer(_trazoInicioMarker); } catch (e2) {} }
-                _trazoInicioMarker = L.circleMarker(ll, {
-                    radius: 9, color: '#B4D445', fillColor: '#B4D445', fillOpacity: 0.95, weight: 2,
-                    interactive: false
-                }).addTo(map);
-            }
-            if (typeof mostrarToast === 'function' && _trazoPuntos.length === 1) {
-                mostrarToast('Punto 1 colocado. Sigue tocando para agregar más.');
-            }
-        }
-
-        const onClick = function (e) {
-            if (!_trazoPuntosActivo) return;
-            if (Date.now() < _trazoIgnorarClickHasta) return;
-            try { L.DomEvent.stopPropagation(e); } catch (err) {}
-            const ll = e.latlng || latlngDesdeEvento(e);
-            agregarPunto(ll);
-        };
-        const onMove = function (e) {
-            if (!_trazoPuntosActivo || !_trazoPuntos.length) return;
-            const ll = latlngDesdeEvento(e);
-            if (!ll) return;
-            _trazoUltimoCursor = ll;
-            if (_trazoPuntosTipo === 'pol') {
-                const ultimo = _trazoPuntos[_trazoPuntos.length - 1];
-                if (_trazoGuia) _trazoGuia.setLatLngs([ultimo, ll]);
-                else {
-                    _trazoGuia = L.polyline([ultimo, ll], {
-                        color: '#B4D445', weight: 2.5, opacity: 0.85, dashArray: '8 6', interactive: false
-                    }).addTo(map);
-                }
-            } else {
-                programarPreviewFlechasEvac();
-            }
-        };
-
-        _trazoHandlers = { click: onClick, move: onMove };
-        map.on('click', onClick);
-        map.on('mousemove', onMove);
-        map.on('touchmove', onMove);
-    }
-
     function iniciarTrazado(tipo) {
         if (!esMapaEditable()) return;
         if (!map) return;
-        if (trazandoAhora || _trazoPuntosActivo) {
+        // Si había un trazo pendiente sin finalizar con ✔️, se descarta SIN sumar a la leyenda
+        if (trazandoAhora) {
             _cancelarTrazadoActivo = true;
-            try { detenerTrazoPuntos(); } catch (eP) {}
             try { map.editTools.stopDrawing(); } catch (e) {
-                try { if (trazandoAhora) map.removeLayer(trazandoAhora); } catch (e2) {}
-                _cancelarTrazadoActivo = false; trazandoAhora = null; tipoDeTrazadoActivo = ""; ocultarBotonesTrazado();
+                try { map.removeLayer(trazandoAhora); } catch (e2) {}
+                _cancelarTrazadoActivo = false;
+                trazandoAhora = null;
+                tipoDeTrazadoActivo = "";
+                ocultarBotonesTrazado();
             }
-            if (typeof mostrarToast === 'function') mostrarToast('Trazo anterior descartado', 'aviso');
+            if (typeof mostrarToast === 'function') mostrarToast('Trazo anterior descartado (usa ✔️ para guardar)', 'aviso');
         }
         deseleccionarTodo();
-        emojiActual = null; modoNavegar = true;
-        document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active'));
+        emojiActual = null; 
+        modoNavegar = true; 
+        document.querySelectorAll('.btn-mapa').forEach(b => b.classList.remove('active')); 
         document.getElementById('floatMano').classList.add('activo-float');
-        tipoDeTrazadoActivo = tipo;
+
+        tipoDeTrazadoActivo = tipo; 
+
         document.getElementById('opciones-poligono').style.display = 'none';
         document.getElementById('opciones-linea').style.display = 'none';
         document.getElementById('opciones-evac').style.display = 'none';
-        if (tipo === 'pol') {
-            document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
+
+        if(tipo === 'pol') { 
+            document.getElementById('desplegable-riesgos-trazado').style.display = 'flex'; 
             document.getElementById('opciones-poligono').style.display = 'flex';
-            iniciarTrazoPuntos('pol');
+            map.editTools.startPolygon(); 
         } else if (tipo === 'evac') {
             document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
             document.getElementById('opciones-evac').style.display = 'flex';
-            iniciarTrazoPuntos('evac');
-        } else {
+            map.editTools.startPolyline();
+        } else { 
             document.getElementById('desplegable-riesgos-trazado').style.display = 'flex';
             document.getElementById('opciones-linea').style.display = 'flex';
-            try { const selL = document.getElementById('selectTipoLinea'); if (selL) aplicarPresetTipoLinea(selL.value); } catch (ePre) {}
-            map.editTools.startPolyline();
-        }
+            try {
+                const selL = document.getElementById('selectTipoLinea');
+                if (selL) aplicarPresetTipoLinea(selL.value);
+            } catch (ePre) {}
+            map.editTools.startPolyline(); 
+        } 
     }
 
     function ocultarBotonesTrazado() {
@@ -5854,20 +5655,8 @@
             return ll.length;
         } catch (e) { return 0; }
     }
-    function finalizarTrazado() {
-        if (_trazoPuntosActivo) { finalizarTrazoPuntos(); return; }
-        if (trazandoAhora && map) map.editTools.stopDrawing();
-    }
+    function finalizarTrazado() { if(trazandoAhora && map) map.editTools.stopDrawing(); }
     function cancelarTrazado() {
-        if (_trazoPuntosActivo) {
-            detenerTrazoPuntos();
-            tipoDeTrazadoActivo = "";
-            ocultarBotonesTrazado();
-            document.getElementById('desplegable-riesgos-trazado').style.display = 'none';
-            activarMano();
-            if (typeof mostrarToast === 'function') mostrarToast('Trazo cancelado (no se sumó)', 'aviso');
-            return;
-        }
         if (!trazandoAhora || !map) { ocultarBotonesTrazado(); return; }
         _cancelarTrazadoActivo = true;
         try {
@@ -6032,11 +5821,9 @@
         }
     }
 
-    function recrearFlechasRuta(linea, opts) {
-        opts = opts || {};
-        const interactivas = opts.interactive !== false; // por defecto sí; en preview: false
-        try { if (linea._decoradorFlechas) map.removeLayer(linea._decoradorFlechas); } catch (e0) {}
-        const latlngs = linea.getLatLngs(); if (!latlngs || latlngs.length < 2) return;
+    function recrearFlechasRuta(linea) {
+        if (linea._decoradorFlechas) map.removeLayer(linea._decoradorFlechas);
+        const latlngs = linea.getLatLngs(); if (latlngs.length < 2) return;
         const colorFlecha = linea.colorEvac || '#00FF00';
         const grosorFlecha = linea.grosorEvac || 6;
         const tamanoIcono = Math.max(24, grosorFlecha * 5);
@@ -6047,31 +5834,19 @@
             let p1 = acumPuntosPantala[i]; let p2 = acumPuntosPantala[i+1];
             let dx = p2.x - p1.x; let dy = p2.y - p1.y; let distSegmento = Math.sqrt(dx * dx + dy * dy);
             if (distSegmento === 0) continue;
-            let angulo = Math.atan2(dy, dx) * 180 / Math.PI;
-            while (distSegmento >= distanciaRemanente) {
+            let angulo = Math.atan2(dy, dx) * 180 / Math.PI; let distanciaActual = distSegmento;
+            while (distanciaActual >= distanciaRemanente) {
                 let ratio = distanciaRemanente / distSegmento;
                 let latlngFlecha = map.layerPointToLatLng([p1.x + dx * ratio, p1.y + dy * ratio]);
-                let mFlecha = L.marker(latlngFlecha, {
-                    icon: L.divIcon({
-                        className: '',
-                        html: `<div style="transform: rotate(${angulo}deg); width: ${tamanoIcono+2}px; height: ${tamanoIcono+2}px; display: flex; align-items: center; justify-content: center; pointer-events:${interactivas ? 'auto' : 'none'};"><svg width="${tamanoIcono}" height="${tamanoIcono}" viewBox="0 0 24 24" fill="none"><path d="M4 12H20M20 12L12 4M20 12L12 20" stroke="${colorFlecha}" stroke-width="${grosorFlecha}" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`,
-                        iconSize: [tamanoIcono+2, tamanoIcono+2]
-                    }),
-                    interactive: interactivas,
-                    keyboard: false
-                });
-                if (interactivas) mFlecha.on('click', ev => abrirPopupDesdeFlecha(linea, ev));
-                groupoFlechas.addLayer(mFlecha);
-                distanciaRemanente += distanciaPaso;
+                let mFlecha = L.marker(latlngFlecha, { icon: L.divIcon({ className: '', html: `<div style="transform: rotate(${angulo}deg); width: ${tamanoIcono+2}px; height: ${tamanoIcono+2}px; display: flex; align-items: center; justify-content: center;"><svg width="${tamanoIcono}" height="${tamanoIcono}" viewBox="0 0 24 24" fill="none"><path d="M4 12H20M20 12L12 4M20 12L12 20" stroke="${colorFlecha}" stroke-width="${grosorFlecha}" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`, iconSize: [tamanoIcono+2, tamanoIcono+2] }), interactive: true });
+                mFlecha.on('click', ev => abrirPopupDesdeFlecha(linea, ev));
+                groupoFlechas.addLayer(mFlecha); distanciaRemanente += distanciaPaso;
             }
+            distanciaActual -= 0;
             distanciaRemanente -= distSegmento;
         }
         groupoFlechas.addTo(map); linea._decoradorFlechas = groupoFlechas;
-        map.off('zoomend', linea._zoomListener);
-        if (interactivas) {
-            linea._zoomListener = () => { if (stackElementos.includes(linea)) recrearFlechasRuta(linea); };
-            map.on('zoomend', linea._zoomListener);
-        }
+        map.off('zoomend', linea._zoomListener); linea._zoomListener = () => { if(stackElementos.includes(linea)) recrearFlechasRuta(linea); }; map.on('zoomend', linea._zoomListener);
     }
 
     function registrarObjeto(obj) {
@@ -6091,10 +5866,10 @@
             obj.tipoId = 'ruta_evacuacion';
             obj.colorEvac = document.getElementById('colorEvac').value || '#00FF00';
             obj.grosorEvac = parseInt(document.getElementById('grosorEvac').value) || 6;
-            obj.setStyle({ color: obj.colorEvac, weight: 14, opacity: 0.01, fill: false });
+            obj.setStyle({ color: obj.colorEvac, weight: 0, fill: false });
             recrearFlechasRuta(obj);
             obj.nombrePersonalizado = "VÍA DE EVACUACIÓN (VERDE)";
-            obj.bindPopup(generarPopupHTML(obj), { autoPan: false });
+            obj.bindPopup(generarPopupHTML(obj), { autoPan: false, closeOnClick: false });
         } 
         else if (tipoDeTrazadoActivo === 'pol') {
             let col = document.getElementById('colorPol').value; let fill = document.getElementById('checkRelleno').checked; obj.tipoId = 'poligono_riesgo';
@@ -6110,7 +5885,7 @@
                 if (typeof obj.bringToBack === 'function') obj.bringToBack();
             } catch (eBack) {}
 
-            obj.bindPopup(generarPopupHTML(obj));
+            obj.bindPopup(generarPopupHTML(obj), { autoPan: false, closeOnClick: false });
         } else {
             const selTipo = document.getElementById('selectTipoLinea');
             const tipoLin = (selTipo && selTipo.value) ? selTipo.value : 'lin_otro';
@@ -6135,18 +5910,18 @@
             if (contadores[tipoLin] === undefined || isNaN(contadores[tipoLin])) contadores[tipoLin] = 0;
             contadores[tipoLin]++;
             actualizarBadges();
-            obj.bindPopup(generarPopupHTML(obj));
+            obj.bindPopup(generarPopupHTML(obj), { autoPan: false, closeOnClick: false });
         }
 
         obj.on('click', e => { 
             L.DomEvent.stopPropagation(e);
             if (emojiActual && !modoNavegar) {
                 crearIcono(e.latlng);
-                // Solo colocar el icono: impedir que se abran las especificaciones del polígono/línea
                 try { obj.closePopup(); } catch (eCP) {}
                 setTimeout(function () { try { map.closePopup(); } catch (eCP2) {} }, 0);
-            } else {
-                if (modoNavegar) { deseleccionarTodo(); objetoSeleccionado = obj; obj.enableEdit(); try { armarApagadoVertices(obj); } catch (eT) {} refrescarPopup(obj); obj.openPopup(); } 
+            } else if (modoNavegar) {
+                // Descripción en centro + vértices editables; el mapa NO se mueve
+                seleccionarCapaEnMapa(obj, e.latlng);
             }
         });
         stackElementos.push(obj);
@@ -6249,10 +6024,45 @@
         try { cancelarApagadoVertices(); } catch (eT) {}
         if (objetoSeleccionado) {
             try {
+                if (typeof objetoSeleccionado.closePopup === 'function') objetoSeleccionado.closePopup();
+            } catch (eP) {}
+            try {
                 if (typeof objetoSeleccionado.disableEdit === 'function') objetoSeleccionado.disableEdit();
             } catch (e) {}
         }
+        try { if (map) map.closePopup(); } catch (eM) {}
         objetoSeleccionado = null;
+    }
+
+    /** Selecciona capa: activa vértices de edición y muestra descripción SIN mover el mapa. */
+    function seleccionarCapaEnMapa(capa, latlngClick) {
+        if (!capa) return;
+        deseleccionarTodo();
+        objetoSeleccionado = capa;
+        // Activar edición (vértices) — no solo la descripción
+        try {
+            if (typeof capa.enableEdit === 'function') capa.enableEdit();
+        } catch (eE) {}
+        try { armarApagadoVertices(capa); } catch (eT) {}
+        try { refrescarPopup(capa); } catch (eR) {}
+        // Popup en el centro del polígono (o en el clic), sin autoPan
+        try {
+            if (!capa.getPopup()) {
+                capa.bindPopup(generarPopupHTML(capa), { autoPan: false, closeOnClick: false });
+            } else {
+                capa.getPopup().options.autoPan = false;
+                capa.getPopup().options.closeOnClick = false;
+                capa.setPopupContent(generarPopupHTML(capa));
+            }
+            let donde = latlngClick;
+            if (capa.tipoId === 'poligono_riesgo' && capa.getBounds) {
+                try { donde = capa.getBounds().getCenter(); } catch (eC) {}
+            }
+            if (donde) capa.openPopup(donde);
+            else capa.openPopup();
+        } catch (eOp) {
+            try { capa.openPopup(); } catch (e2) {}
+        }
     }
     function activarMano(limpiarResaltado) {
         emojiActual = null;
@@ -6413,7 +6223,7 @@
         });
     })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424e5f5c8255322',t:'MTc5MDYyMTA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424e5f5c8255322',t:'MTc5MDYyMTA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a487596b890aa675',t:'MTc5MTY1MzM4OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 istener('touchend', schedule, { passive: true });
         window.addEventListener('orientationchange', function () {
