@@ -62,13 +62,13 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center;
-            margin-bottom: 14px; 
-            height: 110px; 
+            margin-bottom: 16px; 
+            height: 120px; 
             pointer-events: none;
         }
         .logo-wrapper { 
-            flex: 0 0 230px;
-            height: 110px; 
+            flex: 0 0 240px;
+            height: 120px; 
             overflow: visible; 
             display: flex; 
             justify-content: center; 
@@ -76,11 +76,11 @@
             pointer-events: none;
         }
         .logos-registro img { 
-            width: auto; 
-            height: 100px; 
-            max-width: 230px;
+            width: 100%; 
+            height: 100%; 
             object-fit: contain; 
-            transform: none;
+            transform: scale(1.8);
+            transform-origin: center center;
             pointer-events: none;
         }
 
@@ -191,7 +191,7 @@
             }
             .logo-box {
                 width: 90px !important;
-                height: 52px !important;
+                height: 55px !important;
                 top: 50% !important;
                 transform: translateY(-50%) !important;
                 overflow: visible !important;
@@ -199,10 +199,8 @@
             .logo-left { left: 2px !important; }
             .logo-right { right: 2px !important; }
             .logo-box img {
-                height: 48px !important;
-                max-width: 90px !important;
-                width: auto !important;
-                transform: none !important;
+                transform: scale(1.4) !important;
+                transform-origin: center center !important;
             }
             #titulo-principal {
                 font-size: 11.5px !important;
@@ -269,20 +267,17 @@
                 box-sizing: border-box !important;
             }
             .logos-registro {
-                height: 80px !important;
+                height: 90px !important;
                 margin-bottom: 12px !important;
                 align-items: center !important;
             }
             .logo-wrapper {
                 flex: 0 0 160px !important;
-                height: 80px !important;
+                height: 90px !important;
                 overflow: visible !important;
             }
             .logos-registro img {
-                height: 70px !important;
-                max-width: 160px !important;
-                width: auto !important;
-                transform: none !important;
+                transform: scale(1.6) !important;
             }
             #pantalla-registro h2 {
                 font-size: 13px !important;
@@ -415,7 +410,7 @@
             top: 50%; 
             transform: translateY(-50%); 
             width: 200px;        
-            height: 90px;       
+            height: 100px;       
             display: flex; 
             align-items: center; 
             justify-content: center; 
@@ -427,11 +422,11 @@
         .logo-right { right: 12px; }
 
         .logo-box img { 
-            width: auto; 
-            height: 80px; 
-            max-width: 200px;
+            width: 100%; 
+            height: 100%; 
             object-fit: contain; 
-            transform: none; 
+            transform: scale(1.7); 
+            transform-origin: center center;
             filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
             pointer-events: none;
         } 
