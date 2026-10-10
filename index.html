@@ -1333,8 +1333,26 @@
             .user-location-icon { width: 8px !important; height: 8px !important; border-width: 2px !important; }
         }
     </style>
+  <style id="emoji-3d-tema">
+    /* Emojis con efecto 3D (sombra, brillo y relieve). Excluye el reporte. */
+    .map-icon-container:not(#btn-flyer-menu):not([class*="report"]) {
+      box-shadow: inset 0 -3px 4px rgba(0,0,0,0.22), inset 0 2px 3px rgba(255,255,255,0.95), 0 4px 7px rgba(0,0,0,0.42) !important;
+    }
+    .map-icon-container:not([class*="report"]) { filter: drop-shadow(0 2px 1px rgba(0,0,0,0.25)); }
+    #sidebar .btn-mapa, #obs-sidebar .btn-mapa, .map-legend .leg-ico, .leg-ico, .btn-emoji-pick {
+      text-shadow: 0 1px 0 rgba(255,255,255,0.55), 0 2px 3px rgba(0,0,0,0.45) !important;
+    }
+    .leg-ico, .btn-emoji-pick {
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.45));
+    }
+    #sidebar h4, .sb-sec h4 {
+      text-shadow: 0 1px 0 rgba(0,0,0,0.5) !important;
+    }
+.cico.tb { width:24px; height:24px; margin:0; vertical-align:middle; }
+  </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="fx3d" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="0.7" result="blur"/><feSpecularLighting in="blur" surfaceScale="3" specularConstant="1.1" specularExponent="22" lighting-color="#ffffff" result="spec"><fePointLight x="-6" y="-8" z="26"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/><feComposite in="SourceGraphic" in2="specIn" operator="arithmetic" k1="0" k2="1" k3="0.6" k4="0" result="lit"/><feGaussianBlur in="SourceAlpha" stdDeviation="0.5" result="sb"/><feOffset in="sb" dx="0" dy="1" result="so"/><feComponentTransfer in="so" result="shadow"><feFuncA type="linear" slope="0.5"/></feComponentTransfer><feMerge><feMergeNode in="shadow"/><feMergeNode in="lit"/></feMerge></filter><g filter="url(#fx3d)" id="tb-menu"><linearGradient id="gMenu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#64b5f6"/><stop offset="1" stop-color="#1565c0"/></linearGradient><rect x="3" y="4.5" width="18" height="3.2" rx="1.6" fill="url(#gMenu)"/><rect x="3" y="10.4" width="18" height="3.2" rx="1.6" fill="url(#gMenu)"/><rect x="3" y="16.3" width="18" height="3.2" rx="1.6" fill="url(#gMenu)"/></g><g filter="url(#fx3d)" id="tb-hand"><linearGradient id="gHand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe082"/><stop offset="1" stop-color="#ffb300"/></linearGradient><g fill="url(#gHand)" stroke="#8d6e63" stroke-width=".6"><rect x="6.2" y="3.5" width="2.8" height="10" rx="1.4"/><rect x="9.3" y="2" width="2.8" height="11.5" rx="1.4"/><rect x="12.4" y="2.6" width="2.8" height="10.9" rx="1.4"/><rect x="15.5" y="4.5" width="2.6" height="9" rx="1.3"/><rect x="2.8" y="9.5" width="4.2" height="3.4" rx="1.7" transform="rotate(-20 5 11)"/><path d="M6 12.5h11.5v3.5a5.2 5.2 0 0 1-5.2 5.2h-1.2a5.2 5.2 0 0 1-5.1-5.2z"/></g></g><g filter="url(#fx3d)" id="tb-undo"><path d="M8.5 8.5H14a4.5 4.5 0 0 1 0 9H9" stroke="#3949ab" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M5 5.5 8.8 8.5 5 11.5" stroke="#3949ab" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g><g filter="url(#fx3d)" id="tb-redo"><path d="M15.5 8.5H10a4.5 4.5 0 0 0 0 9h5" stroke="#3949ab" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M19 5.5 15.2 8.5 19 11.5" stroke="#3949ab" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g><g filter="url(#fx3d)" id="tb-ok"><linearGradient id="gOk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#66bb6a"/><stop offset="1" stop-color="#2e7d32"/></linearGradient><circle cx="12" cy="12" r="9.5" fill="url(#gOk)"/><path d="M7.5 12.3l3 3 6-6.3" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g><g filter="url(#fx3d)" id="tb-x"><linearGradient id="gX" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ef5350"/><stop offset="1" stop-color="#b71c1c"/></linearGradient><circle cx="12" cy="12" r="9.5" fill="url(#gX)"/><path d="M8.3 8.3l7.4 7.4M15.7 8.3l-7.4 7.4" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></g><g filter="url(#fx3d)" id="tb-pin"><linearGradient id="gPin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7043"/><stop offset="1" stop-color="#c62828"/></linearGradient><path fill="url(#gPin)" d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7z"/><circle cx="12" cy="9.5" r="2.7" fill="#fff"/></g></defs></svg>
 
 <div id="video-contenedor">
     <video id="animacion-video" muted>
@@ -1817,12 +1835,12 @@
             </div>
 
             <div class="controles-mapa-horiz">
-                <button class="btn-float" onclick="toggleSidebar()" title="Ocultar/Mostrar Inventario">☰</button>
+                <button class="btn-float" onclick="toggleSidebar()" title="Ocultar/Mostrar Inventario">📋</button>
                 <button id="floatMano" class="btn-float activo-float" onclick="activarMano(true)" title="Navegar">🖐️</button>
                 <button class="btn-float" onclick="irAMiUbicacion()" title="Mi Ubicación GPS">📍</button>
                 <button id="btnDeshacer" class="btn-float" onclick="deshacerAccionMapa()" title="Deshacer" style="opacity:0.45; font-size:16px;">↩️</button>
                 <button id="btnRehacer" class="btn-float" onclick="rehacerAccionMapa()" title="Rehacer" style="opacity:0.45; font-size:16px;">↪️</button>
-                <button id="btnFinalizar" class="btn-float" onclick="finalizarTrazado()" title="Finalizar trazado">✔️</button>
+                <button id="btnFinalizar" class="btn-float" onclick="finalizarTrazado()" title="Finalizar trazado">✅</button>
                 <button id="btnCancelarTrazado" class="btn-float" onclick="cancelarTrazado()" title="Cancelar trazado (no guardar)">❌</button>
             </div>
             <div id="map"></div>
@@ -2537,9 +2555,15 @@
     let emojiRiesgoPersonalizadoActivo = "⚠️";
     let nombreRiesgoPersonalizadoActivo = "Riesgo Ambiental Personalizado";
 
+    function claveRiesgosPersonalizados() {
+        const correo = (localStorage.getItem('user_email_active') || 'anonimo').toLowerCase();
+        return 'riesgos_personalizados_sig::' + correo;
+    }
+
     function cargarRiesgosPersonalizados() {
+        dbRiesgosPersonalizados = [];
         try {
-            const data = localStorage.getItem('riesgos_personalizados_sig');
+            const data = localStorage.getItem(claveRiesgosPersonalizados());
             if (data) {
                 dbRiesgosPersonalizados = JSON.parse(data);
             }
@@ -2551,7 +2575,7 @@
     }
 
     function guardarRiesgosPersonalizados() {
-        localStorage.setItem('riesgos_personalizados_sig', JSON.stringify(dbRiesgosPersonalizados));
+        localStorage.setItem(claveRiesgosPersonalizados(), JSON.stringify(dbRiesgosPersonalizados));
     }
 
     function abrirModalOtroRiesgo() {
@@ -6231,7 +6255,7 @@
         });
     })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424e5f5c8255322',t:'MTc5MDYyMTA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a487886dbe8a0efd',t:'MTc5MTY1NTMxMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a424e5f5c8255322',t:'MTc5MDYyMTA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a487886dbe8a0efd',t:'MTc5MTY1NTMxMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a48892edabffb7f5',t:'MTc5MTY2NjIyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 istener('touchend', schedule, { passive: true });
         window.addEventListener('orientationchange', function () {
@@ -6239,5 +6263,82 @@ istener('touchend', schedule, { passive: true });
         });
     })();
 </script>
+<script id="popups-riesgo-nombre">
+/* Popups: riesgos ambientales usan el mismo popup (nombre, magnitud, REPORTAR, ELIMINAR);
+   el resto muestra su nombre real en vez de "Elemento". Se aplica al abrir el popup. */
+(function () {
+    function nombreTipoLegend(tipoId) {
+        try {
+            var b = document.querySelector('button[onclick*=",\'' + tipoId + '\')"]');
+            if (!b) return '';
+            var d = b.querySelector('div');
+            var t = (d ? d.textContent : b.textContent) || '';
+            return t.replace(/^[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9¿¡(]+/, '').trim();
+        } catch (e) { return ''; }
+    }
+    function nombreParaPopup(layer) {
+        if (layer.nombrePersonalizado) return layer.nombrePersonalizado;
+        if (typeof esRiesgoAmbiental === 'function' && esRiesgoAmbiental(layer.tipoId)) {
+            try { return obtenerNombreRiesgo(layer.tipoId, layer); } catch (e) {}
+        }
+        return nombreTipoLegend(layer.tipoId) || layer.tipoId || 'Elemento';
+    }
+    function htmlRiesgo(layer) {
+        var nombre = obtenerNombreRiesgo(layer.tipoId, layer);
+        var emo = (typeof emojiTituloTipo === 'function') ? emojiTituloTipo(layer.tipoId, layer) : '';
+        var btn = layer.fueReportado
+            ? '<div style="background:#1a3c2c; color:#4db8e8; border:1px solid #4db8e8; padding:6px 10px; border-radius:4px; font-size:10px; font-weight:bold; text-align:center; margin-top:5px;">✅ YA REPORTADO</div>'
+            : '<button class="btn-reportar-popup" onclick="abrirModalReporteRiesgo(objetoSeleccionado)">REPORTAR</button>';
+        return '<div style="display:flex;flex-direction:column;gap:4px;">' +
+            '<span class="popup-desc">' + emo + ' ' + nombre + '</span>' +
+            htmlSelectorMagnitudPopup(L.stamp(layer), layer.nivelMagnitud) +
+            btn +
+            '<button class="btn-delete-popup" onclick="eliminarObjeto(objetoSeleccionado)">ELIMINAR</button></div>';
+    }
+    function htmlPoste(layer) {
+        var esteValue = layer.especificacionDiscapacidad || '';
+        var txtEsp = (typeof textoEspecificacionPoste === 'function') ? textoEspecificacionPoste(layer) : '';
+        var titulo = txtEsp ? ('POSTE EN RIESGO — ' + txtEsp) : 'POSTE ELÉCTRICO EN RIESGO';
+        var emo = (typeof emojiTituloTipo === 'function') ? emojiTituloTipo(layer.tipoId, layer) : '⚡';
+        var btn = layer.fueReportado
+            ? '<div style="background:#1a3c2c; color:#4db8e8; border:1px solid #4db8e8; padding:6px 10px; border-radius:4px; font-size:10px; font-weight:bold; text-align:center; margin-top:5px;">✅ YA REPORTADO</div>'
+            : '<button class="btn-reportar-popup" onclick="abrirModalReporteRiesgo(objetoSeleccionado)">REPORTAR</button>';
+        return '<div style="display:flex;flex-direction:column;gap:4px;">' +
+            '<span class="popup-desc">' + emo + ' ' + titulo + '</span>' +
+            htmlSelectorPosteRiesgo(L.stamp(layer), esteValue) +
+            htmlSelectorMagnitudPopup(L.stamp(layer), layer.nivelMagnitud) +
+            btn +
+            '<button class="btn-delete-popup" onclick="eliminarObjeto(objetoSeleccionado)">ELIMINAR</button></div>';
+    }
+
+    function aplicar(layer, popup) {
+        if (!layer || !layer.tipoId) return;
+        if (layer.tipoId === 'poste_riesgo') { popup.setContent(htmlPoste(layer)); return; }
+        if (typeof esRiesgoAmbiental === 'function' && esRiesgoAmbiental(layer.tipoId)) {
+            popup.setContent(htmlRiesgo(layer));
+            return;
+        }
+        var c = popup.getContent();
+        if (typeof c === 'string' && c.indexOf('>Elemento<') !== -1) {
+            popup.setContent(c.replace('>Elemento<', '>' + nombreParaPopup(layer).replace(/</g, '&lt;') + '<'));
+        }
+    }
+    var correoVisto = null;
+    setInterval(function () {
+        var c = localStorage.getItem('user_email_active') || '';
+        if (c !== correoVisto) {
+            correoVisto = c;
+            if (typeof cargarRiesgosPersonalizados === 'function') { try { cargarRiesgosPersonalizados(); } catch (e) {} }
+        }
+    }, 500);
+    (function esperar() {
+        if (typeof map === 'undefined' || !map || typeof htmlSelectorMagnitudPopup !== 'function') return setTimeout(esperar, 200);
+        map.on('popupopen', function (e) {
+            try { aplicar(e.popup && e.popup._source, e.popup); } catch (err) { console.warn('popup', err); }
+        });
+    })();
+})();
+</script>
+
 </body>
 </html>
