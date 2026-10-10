@@ -86,7 +86,6 @@
             transform-origin: center center;
             pointer-events: none;
         }
-        /* Logo derecho más grande (pantalla de registro) */
         .logos-registro .logo-wrapper:last-child img {
             transform: scale(2.7);
         }
@@ -205,9 +204,16 @@
             }
             .logo-left { left: 2px !important; }
             .logo-right { right: 2px !important; }
+            .logo-box.logo-left {
+                width: 90px !important;
+                overflow: visible !important;
+            }
             .logo-box img {
                 transform: scale(1.5) !important;
                 transform-origin: center center !important;
+            }
+            .logo-box.logo-left img {
+                filter: none !important;
             }
             #titulo-principal {
                 font-size: 11.5px !important;
@@ -431,6 +437,12 @@
         .logo-left { left: 12px; } 
         .logo-right { right: 12px; }
 
+        /* Logo izquierdo del encabezado: más ancho, completo, sin sombra */
+        .logo-box.logo-left {
+            width: 220px;
+            overflow: visible;
+        }
+
         .logo-box img { 
             width: 100%; 
             height: 100%; 
@@ -440,9 +452,9 @@
             filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
             pointer-events: none;
         }
-        /* Logo izquierdo del encabezado: sin sombra, mismo tamaño */
         .logo-box.logo-left img {
             filter: none;
+            transform: scale(2.0);
         } 
 
         #titulo-principal {
