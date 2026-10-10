@@ -1171,7 +1171,7 @@ correoActivo?await cargarMapaUsuario(correoActivo):(restaurarProgresoMapa(),enfo
 const playPromise=video.play()
 void 0!==playPromise&&playPromise.catch(err=>{console.log("Autoplay bloqueado o no disponible:",err),transicionarAlSistema()}),video.onended=transicionarAlSistema,setTimeout(transicionarAlSistema,3500)}else transicionarAlSistema()}function inicializarMapa(){if(map)return
 const esMovilMapa=window.matchMedia("(max-width: 768px)").matches||window.matchMedia("(pointer: coarse)").matches&&window.innerWidth<=1024
-map=L.map("map",{editable:!0,zoomControl:!1}).setView([10.136,-64.686],18)
+map=L.map("map",{editable:!0,zoomControl:!1,preferCanvas:!!(window.matchMedia&&matchMedia("(max-width:900px),(pointer:coarse)").matches)}).setView([10.136,-64.686],18)
 try{map.getPane("panePoligonos")||(map.createPane("panePoligonos"),map.getPane("panePoligonos").style.zIndex=350)}catch(ePane){}L.control.zoom({position:esMovilMapa?"topright":"topleft"}).addTo(map),L.tileLayer("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",{maxZoom:20}).addTo(map),map.on("editable:drawing:start",e=>{trazandoAhora=e.layer,document.getElementById("btnFinalizar").style.display="flex",document.getElementById("btnCancelarTrazado").style.display="flex"}),map.on("editable:drawing:click",e=>{"evac"===tipoDeTrazadoActivo&&trazandoAhora&&(trazandoAhora.colorEvac=document.getElementById("colorEvac").value,trazandoAhora.grosorEvac=parseInt(document.getElementById("grosorEvac").value),trazandoAhora.setStyle({color:trazandoAhora.colorEvac,weight:0,fill:!1}),recrearFlechasRuta(trazandoAhora))}),map.on("editable:drawing:end",e=>{const capaNueva=e.layer
 if(ocultarBotonesTrazado(),_cancelarTrazadoActivo){_cancelarTrazadoActivo=!1
 try{capaNueva&&map.removeLayer(capaNueva)}catch(err){}try{trazandoAhora&&trazandoAhora!==capaNueva&&map.removeLayer(trazandoAhora)}catch(err2){}return trazandoAhora=null,tipoDeTrazadoActivo="",document.getElementById("desplegable-riesgos-trazado").style.display="none",void activarMano()}const esPol="pol"===tipoDeTrazadoActivo,nPts=contarPuntosTrazado(capaNueva)
@@ -1323,7 +1323,7 @@ else if(window.addEventListener)document.addEventListener("DOMContentLoaded",c)
 else{var e=document.onreadystatechange||function(){}
 document.onreadystatechange=function(b){e(b),"loading"!==document.readyState&&(document.onreadystatechange=e,c())}}}}()
 
-</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a488b4bfefb6803f',t:'MTc5MTY2NzYxNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a488cbe4f878eed9',t:'MTc5MTY2ODU2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 istener('touchend', schedule, { passive: true });
         window.addEventListener('orientationchange', function () {
@@ -1348,3 +1348,52 @@ map.on("popupopen",function(e){try{aplicar(e.popup&&e.popup._source,e.popup)}cat
 
 </body>
 </html>
+
+<script id="cull-movil">
+/* Móvil: solo se dibujan en el mapa los marcadores visibles (con margen).
+   Los demás quedan guardados y se vuelven a mostrar al moverse. */
+(function () {
+    var esMovil = window.matchMedia && window.matchMedia('(max-width:900px),(pointer:coarse)').matches;
+    if (!esMovil) return;
+    var addOrig = L.Map.prototype.addLayer, remOrig = L.Map.prototype.removeLayer;
+    L.Map.prototype.addLayer = function (l) { if (l && !l._inCull) l._userOff = false; return addOrig.call(this, l); };
+    L.Map.prototype.removeLayer = function (l) { if (l && !l._inCull) l._userOff = true; return remOrig.call(this, l); };
+    var pendiente = null;
+    function cull() {
+        if (typeof map === 'undefined' || !map || typeof stackElementos === 'undefined') return;
+        var marcadores = stackElementos.filter(function (el) { return el instanceof L.Marker; });
+        if (marcadores.length < 120) return;
+        var area = map.getBounds().pad(0.25);
+        var sel = (typeof objetoSeleccionado !== 'undefined') ? objetoSeleccionado : null;
+        marcadores.forEach(function (m) {
+            var dentro = area.contains(m.getLatLng());
+            var abierto = (m.isPopupOpen && m.isPopupOpen()) || m === sel;
+            if (dentro || abierto) {
+                if (m._culled && !m._userOff) {
+                    m._inCull = true; addOrig.call(map, m); m._inCull = false; m._culled = false;
+                }
+            } else if (map.hasLayer(m) && !m._userOff) {
+                m._inCull = true; remOrig.call(map, m); m._inCull = false; m._culled = true;
+            }
+        });
+    }
+    function programar() { clearTimeout(pendiente); pendiente = setTimeout(cull, 120); }
+    (function esperar() {
+        if (typeof map === 'undefined' || !map) return setTimeout(esperar, 300);
+        map.on('moveend zoomend', programar);
+        setTimeout(cull, 1500);
+    })();
+})();
+</script>
+
+<script id="perf-movil">
+/* Móvil: agrupa los guardados seguidos (se guarda ~0.8 s después de la última acción). */
+(function () {
+    var orig = window.guardarProgresoMapa, t = null;
+    if (typeof orig !== 'function') return;
+    function flush() { if (t) { clearTimeout(t); t = null; } try { orig(); } catch (e) {} }
+    window.guardarProgresoMapa = function () { if (t) clearTimeout(t); t = setTimeout(flush, 800); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(); });
+})();
+</script>
