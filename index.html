@@ -1172,7 +1172,7 @@ correoActivo?await cargarMapaUsuario(correoActivo):(restaurarProgresoMapa(),enfo
 const playPromise=video.play()
 void 0!==playPromise&&playPromise.catch(err=>{console.log("Autoplay bloqueado o no disponible:",err),transicionarAlSistema()}),video.onended=transicionarAlSistema,setTimeout(transicionarAlSistema,3500)}else transicionarAlSistema()}function inicializarMapa(){if(map)return
 const esMovilMapa=window.matchMedia("(max-width: 768px)").matches||window.matchMedia("(pointer: coarse)").matches&&window.innerWidth<=1024
-map=L.map("map",{editable:!0,zoomControl:!1,preferCanvas:!!(window.matchMedia&&matchMedia("(max-width:900px),(pointer:coarse)").matches)}).setView([10.136,-64.686],18)
+const usarCanvasMovil=!!(window.matchMedia&&window.matchMedia("(max-width:900px),(pointer:coarse)").matches);if(esMovilMapa)try{if(L.Polyline&&L.Polyline.prototype.options)L.Polyline.prototype.options.smoothFactor=2.5;if(L.Polygon&&L.Polygon.prototype.options)L.Polygon.prototype.options.smoothFactor=2.5}catch(ePerf){}map=L.map("map",{editable:!0,zoomControl:!1,preferCanvas:usarCanvasMovil,renderer:usarCanvasMovil&&L.canvas?L.canvas({padding:.2}):void 0,zoomAnimation:!esMovilMapa,fadeAnimation:!esMovilMapa,markerZoomAnimation:!esMovilMapa}).setView([10.136,-64.686],18)
 try{map.getPane("panePoligonos")||(map.createPane("panePoligonos"),map.getPane("panePoligonos").style.zIndex=350)}catch(ePane){}L.control.zoom({position:esMovilMapa?"topright":"topleft"}).addTo(map),L.tileLayer("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",{maxZoom:20}).addTo(map),map.on("editable:drawing:start",e=>{trazandoAhora=e.layer,document.getElementById("btnFinalizar").style.display="flex",document.getElementById("btnCancelarTrazado").style.display="flex"}),map.on("editable:drawing:click",e=>{"evac"===tipoDeTrazadoActivo&&trazandoAhora&&(trazandoAhora.colorEvac=document.getElementById("colorEvac").value,trazandoAhora.grosorEvac=parseInt(document.getElementById("grosorEvac").value),trazandoAhora.setStyle({color:trazandoAhora.colorEvac,weight:0,fill:!1}),recrearFlechasRuta(trazandoAhora))}),map.on("editable:drawing:end",e=>{const capaNueva=e.layer
 if(ocultarBotonesTrazado(),_cancelarTrazadoActivo){_cancelarTrazadoActivo=!1
 try{capaNueva&&map.removeLayer(capaNueva)}catch(err){}try{trazandoAhora&&trazandoAhora!==capaNueva&&map.removeLayer(trazandoAhora)}catch(err2){}return trazandoAhora=null,tipoDeTrazadoActivo="",document.getElementById("desplegable-riesgos-trazado").style.display="none",void activarMano()}const esPol="pol"===tipoDeTrazadoActivo,nPts=contarPuntosTrazado(capaNueva)
@@ -1250,15 +1250,15 @@ const tipoColocado=m.tipoId,abrirPopupAuto=esRiesgoAmbiental(tipoColocado)||"pos
 try{activarMano()}catch(e){}abrirPopupAuto&&(objetoSeleccionado=m,setTimeout(function(){try{m.openPopup()}catch(e){}},80))}function recrearFlechasRuta(linea){linea._decoradorFlechas&&map.removeLayer(linea._decoradorFlechas)
 const latlngs=linea.getLatLngs()
 if(latlngs.length<2)return
-const colorFlecha=linea.colorEvac||"#00FF00",grosorFlecha=linea.grosorEvac||6,tamanoIcono=Math.max(24,5*grosorFlecha),groupoFlechas=L.layerGroup()
+const colorFlecha=linea.colorEvac||"#00FF00",grosorFlecha=linea.grosorEvac||6,esMovilFlechas=!!(window.matchMedia&&window.matchMedia("(max-width:900px),(pointer:coarse)").matches),pasoFlechas=esMovilFlechas?90:30,tamanoIcono=esMovilFlechas?Math.max(18,Math.min(24,3.5*grosorFlecha)):Math.max(24,5*grosorFlecha),groupoFlechas=L.layerGroup()
 let acumPuntosPantala=[]
 latlngs.forEach(ll=>acumPuntosPantala.push(map.latLngToLayerPoint(ll)))
-let distanciaRemanente=15
+let distanciaRemanente=esMovilFlechas?pasoFlechas/2:15
 for(let i=0;i<acumPuntosPantala.length-1;i++){let p1=acumPuntosPantala[i],p2=acumPuntosPantala[i+1],dx=p2.x-p1.x,dy=p2.y-p1.y,distSegmento=Math.sqrt(dx*dx+dy*dy)
 if(0===distSegmento)continue
 let angulo=180*Math.atan2(dy,dx)/Math.PI,distanciaActual=distSegmento
 for(;distanciaActual>=distanciaRemanente;){let ratio=distanciaRemanente/distSegmento,latlngFlecha=map.layerPointToLatLng([p1.x+dx*ratio,p1.y+dy*ratio]),mFlecha=L.marker(latlngFlecha,{icon:L.divIcon({className:"",html:`<div style="transform: rotate(${angulo}deg); width: ${tamanoIcono+2}px; height: ${tamanoIcono+2}px; display: flex; align-items: center; justify-content: center;"><svg width="${tamanoIcono}" height="${tamanoIcono}" viewBox="0 0 24 24" fill="none"><path d="M4 12H20M20 12L12 4M20 12L12 20" stroke="${colorFlecha}" stroke-width="${grosorFlecha}" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`,iconSize:[tamanoIcono+2,tamanoIcono+2]}),interactive:!0})
-mFlecha.on("click",ev=>abrirPopupDesdeFlecha(linea,ev)),groupoFlechas.addLayer(mFlecha),distanciaRemanente+=30}distanciaActual-=0,distanciaRemanente-=distSegmento}groupoFlechas.addTo(map),linea._decoradorFlechas=groupoFlechas,map.off("zoomend",linea._zoomListener),linea._zoomListener=()=>{stackElementos.includes(linea)&&recrearFlechasRuta(linea)},map.on("zoomend",linea._zoomListener)}function registrarObjeto(obj){if(void 0!==_cancelarTrazadoActivo&&_cancelarTrazadoActivo)return!1
+mFlecha.on("click",ev=>abrirPopupDesdeFlecha(linea,ev)),groupoFlechas.addLayer(mFlecha),distanciaRemanente+=pasoFlechas}distanciaActual-=0,distanciaRemanente-=distSegmento}groupoFlechas.addTo(map),linea._decoradorFlechas=groupoFlechas,map.off("zoomend",linea._zoomListener),linea._zoomListener=()=>{stackElementos.includes(linea)&&recrearFlechasRuta(linea)},map.on("zoomend",linea._zoomListener)}function registrarObjeto(obj){if(void 0!==_cancelarTrazadoActivo&&_cancelarTrazadoActivo)return!1
 try{const nPtsObj=contarPuntosTrazado(obj),esPolObj="pol"===tipoDeTrazadoActivo
 if(esPolObj&&nPtsObj<3||!esPolObj&&nPtsObj<2){try{map.removeLayer(obj)}catch(e){}return!1}}catch(eG){}try{registrarEstadoParaDeshacer()}catch(eU){}let descripcion=""
 if("evac"===tipoDeTrazadoActivo)obj.tipoId="ruta_evacuacion",obj.colorEvac=document.getElementById("colorEvac").value||"#00FF00",obj.grosorEvac=parseInt(document.getElementById("grosorEvac").value)||6,obj.setStyle({color:obj.colorEvac,weight:0,fill:!1}),recrearFlechasRuta(obj),obj.nombrePersonalizado="VÍA DE EVACUACIÓN (VERDE)",obj.bindPopup(generarPopupHTML(obj),{autoPan:!1,closeOnClick:!1})
@@ -1308,30 +1308,7 @@ forzarHeaderVisible()}catch(e){}}var t=null
 function schedule(){t&&clearTimeout(t),t=setTimeout(resetScrollSiZoomNormal,120)}window.visualViewport&&(window.visualViewport.addEventListener("resize",schedule,{passive:!0}),window.visualViewport.addEventListener("scroll",schedule,{passive:!0})),document.addEventListener("touchend",schedule,{passive:!0}),window.addEventListener("orientationchange",function(){setTimeout(forzarHeaderVisible,300)})}()
 
 </script>
-<script>!function(){function c(){var b=a.contentDocument||a.contentWindow&&a.contentWindow.document
-if(b){var d=b.createElement("script")
-d.innerHTML="window.__CF$cv$params={r:'a424e5f5c8255322',t:'MTc5MDYyMTA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);",b.getElementsByTagName("head")[0].appendChild(d)}}if(document.body){var a=document.createElement("iframe")
-if(a.height=1,a.width=1,a.style.position="absolute",a.style.top=0,a.style.left=0,a.style.border="none",a.style.visibility="hidden",document.body.appendChild(a),"loading"!==document.readyState)c()
-else if(window.addEventListener)document.addEventListener("DOMContentLoaded",c)
-else{var e=document.onreadystatechange||function(){}
-document.onreadystatechange=function(b){e(b),"loading"!==document.readyState&&(document.onreadystatechange=e,c())}}}}()
 
-</script><script>!function(){function c(){var b=a.contentDocument||a.contentWindow&&a.contentWindow.document
-if(b){var d=b.createElement("script")
-d.innerHTML="window.__CF$cv$params={r:'a487886dbe8a0efd',t:'MTc5MTY1NTMxMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);",b.getElementsByTagName("head")[0].appendChild(d)}}if(document.body){var a=document.createElement("iframe")
-if(a.height=1,a.width=1,a.style.position="absolute",a.style.top=0,a.style.left=0,a.style.border="none",a.style.visibility="hidden",document.body.appendChild(a),"loading"!==document.readyState)c()
-else if(window.addEventListener)document.addEventListener("DOMContentLoaded",c)
-else{var e=document.onreadystatechange||function(){}
-document.onreadystatechange=function(b){e(b),"loading"!==document.readyState&&(document.onreadystatechange=e,c())}}}}()
-
-</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a488f3613e88b887',t:'MTc5MTY3MDE4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-</html>
-istener('touchend', schedule, { passive: true });
-        window.addEventListener('orientationchange', function () {
-            setTimeout(forzarHeaderVisible, 300);
-        });
-    })();
-</script>
 <script id="popups-riesgo-nombre">!function(){function nombreParaPopup(layer){if(layer.nombrePersonalizado)return layer.nombrePersonalizado
 if("function"==typeof esRiesgoAmbiental&&esRiesgoAmbiental(layer.tipoId))try{return obtenerNombreRiesgo(layer.tipoId,layer)}catch(e){}return function(tipoId){try{var b=document.querySelector("button[onclick*=\",'"+tipoId+"')\"]")
 if(!b)return""
@@ -1347,42 +1324,112 @@ map.on("popupopen",function(e){try{aplicar(e.popup&&e.popup._source,e.popup)}cat
 
 </script>
 
-</body>
-</html>
+
+
 
 <script id="cull-movil">
-/* Móvil: solo se dibujan en el mapa los marcadores visibles (con margen).
-   Los demás quedan guardados y se vuelven a mostrar al moverse. */
+/* Móvil: reduce el trabajo de Leaflet ocultando marcadores fuera del área visible.
+   Las coordenadas y los datos originales se conservan; solo se desmontan del mapa. */
 (function () {
     var esMovil = window.matchMedia && window.matchMedia('(max-width:900px),(pointer:coarse)').matches;
-    if (!esMovil) return;
-    var addOrig = L.Map.prototype.addLayer, remOrig = L.Map.prototype.removeLayer;
-    L.Map.prototype.addLayer = function (l) { if (l && !l._inCull) l._userOff = false; return addOrig.call(this, l); };
-    L.Map.prototype.removeLayer = function (l) { if (l && !l._inCull) l._userOff = true; return remOrig.call(this, l); };
+    if (!esMovil || !window.L) return;
+
+    /* Simplificación visual de trazos: no cambia las coordenadas guardadas. */
+    try {
+        if (L.Polyline && L.Polyline.prototype.options) L.Polyline.prototype.options.smoothFactor = 2.5;
+        if (L.Polygon && L.Polygon.prototype.options) L.Polygon.prototype.options.smoothFactor = 2.5;
+    } catch (e) {}
+
+    var addOrig = L.Map.prototype.addLayer;
+    var remOrig = L.Map.prototype.removeLayer;
+    L.Map.prototype.addLayer = function (layer) {
+        if (layer && !layer._inCull) layer._userOff = false;
+        return addOrig.call(this, layer);
+    };
+    L.Map.prototype.removeLayer = function (layer) {
+        if (layer && !layer._inCull) layer._userOff = true;
+        return remOrig.call(this, layer);
+    };
+
     var pendiente = null;
-    function cull() {
-        if (typeof map === 'undefined' || !map || typeof stackElementos === 'undefined') return;
-        var marcadores = stackElementos.filter(function (el) { return el instanceof L.Marker; });
-        if (marcadores.length < 120) return;
-        var area = map.getBounds().pad(0.25);
-        var sel = (typeof objetoSeleccionado !== 'undefined') ? objetoSeleccionado : null;
-        marcadores.forEach(function (m) {
-            var dentro = area.contains(m.getLatLng());
-            var abierto = (m.isPopupOpen && m.isPopupOpen()) || m === sel;
-            if (dentro || abierto) {
-                if (m._culled && !m._userOff) {
-                    m._inCull = true; addOrig.call(map, m); m._inCull = false; m._culled = false;
-                }
-            } else if (map.hasLayer(m) && !m._userOff) {
-                m._inCull = true; remOrig.call(map, m); m._inCull = false; m._culled = true;
-            }
-        });
+    var enCulling = false;
+    var listaFuente = null;
+    var largoFuente = -1;
+    var marcadoresCache = [];
+    var UMBRAL_MARCADORES = 40;
+
+    function obtenerMarcadores() {
+        if (listaFuente !== stackElementos || largoFuente !== stackElementos.length) {
+            listaFuente = stackElementos;
+            largoFuente = stackElementos.length;
+            marcadoresCache = stackElementos.filter(function (el) {
+                return el instanceof L.Marker;
+            });
+        }
+        return marcadoresCache;
     }
-    function programar() { clearTimeout(pendiente); pendiente = setTimeout(cull, 120); }
+
+    function cull() {
+        if (typeof map === 'undefined' || !map || typeof stackElementos === 'undefined' || enCulling) return;
+        var marcadores = obtenerMarcadores();
+        if (marcadores.length < UMBRAL_MARCADORES) {
+            /* Si la lista bajó del umbral, no dejar ocultos marcadores antiguos. */
+            marcadores.forEach(function (m) {
+                if (m._culled && !m._userOff) {
+                    try {
+                        m._inCull = true;
+                        addOrig.call(map, m);
+                        m._culled = false;
+                    } catch (e) {} finally {
+                        m._inCull = false;
+                    }
+                }
+            });
+            return;
+        }
+
+        var area;
+        try { area = map.getBounds().pad(0.18); } catch (e) { return; }
+        var seleccionado = (typeof objetoSeleccionado !== 'undefined') ? objetoSeleccionado : null;
+        enCulling = true;
+        try {
+            marcadores.forEach(function (m) {
+                try {
+                    var dentro = area.contains(m.getLatLng());
+                    var abierto = (m.isPopupOpen && m.isPopupOpen()) || m === seleccionado;
+                    if (dentro || abierto) {
+                        if (m._culled && !m._userOff) {
+                            m._inCull = true;
+                            addOrig.call(map, m);
+                            m._culled = false;
+                        }
+                    } else if (map.hasLayer(m) && !m._userOff) {
+                        m._inCull = true;
+                        remOrig.call(map, m);
+                        m._culled = true;
+                    }
+                } catch (e) {} finally {
+                    m._inCull = false;
+                }
+            });
+        } finally {
+            enCulling = false;
+        }
+    }
+
+    function programar() {
+        if (enCulling || typeof map === 'undefined' || !map) return;
+        clearTimeout(pendiente);
+        pendiente = setTimeout(cull, 100);
+    }
+
     (function esperar() {
-        if (typeof map === 'undefined' || !map) return setTimeout(esperar, 300);
+        if (typeof map === 'undefined' || !map) return setTimeout(esperar, 250);
         map.on('moveend zoomend', programar);
-        setTimeout(cull, 1500);
+        map.on('layeradd', function (e) {
+            if (e.layer instanceof L.Marker) programar();
+        });
+        setTimeout(cull, 700);
     })();
 })();
 </script>
@@ -1473,3 +1520,6 @@ map.on("popupopen",function(e){try{aplicar(e.popup&&e.popup._source,e.popup)}cat
     esperar();
 })();
 </script>
+
+</body>
+</html>
