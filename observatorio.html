@@ -2436,6 +2436,13 @@ body.ux-map-open { overflow: hidden; }
   }
 }
 
+/* Estabilidad de texto en reportes generados desde móviles. */
+#flyer-card, #rain-map-report-card, #quake-report-card,
+#flyer-card *, #rain-map-report-card *, #quake-report-card * {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 </style>
 <style id="obs-persistence-style">
 /* Guardado del observatorio. No afecta reportes ni captura. */
@@ -3275,6 +3282,38 @@ body.ux-map-open { overflow: hidden; }
   };
 })();
 
+/* Normaliza los PNG de reportes a un tamaño HD apto para WhatsApp.
+   Mantiene la proporción del reporte: 9:16 queda 2160×3840; los reportes
+   más altos conservan su alto proporcional con lado mayor de 3840 px. */
+(function () {
+  "use strict";
+  var HD_LONG_SIDE = 3840;
+  var HD_MAX_PIXELS = 2160 * 3840;
+  window.__normalizeReportHdCanvas = function (canvas) {
+    if (!canvas || !canvas.width || !canvas.height) return canvas;
+    var w = canvas.width, h = canvas.height;
+    var scale = HD_LONG_SIDE / Math.max(w, h);
+    var pixels = w * h * scale * scale;
+    if (pixels > HD_MAX_PIXELS) scale = Math.sqrt(HD_MAX_PIXELS / (w * h));
+    var outW = Math.max(1, Math.round(w * scale));
+    var outH = Math.max(1, Math.round(h * scale));
+    if (outW === w && outH === h) return canvas;
+    try {
+      var out = document.createElement("canvas");
+      out.width = outW; out.height = outH;
+      var ctx = out.getContext("2d", { alpha: false });
+      ctx.fillStyle = "#0b2e26";
+      ctx.fillRect(0, 0, outW, outH);
+      ctx.imageSmoothingEnabled = true;
+      if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(canvas, 0, 0, outW, outH);
+      return out;
+    } catch (e) {
+      return canvas;
+    }
+  };
+})();
+
   function waitLibs(cb, _tries) {
     _tries = _tries || 0;
     var core = typeof L !== "undefined" && typeof Chart !== "undefined";
@@ -3297,11 +3336,10 @@ body.ux-map-open { overflow: hidden; }
   function reportCaptureScale(outputFormat) {
     var mobile = isMobileDevice();
     var isPng = String(outputFormat).toLowerCase() === "png";
-    /* PNG HD real:
-       - Escritorio: 4× → 1080×1920 pasa a 4320×7680 (calidad máxima).
-       - Móvil: 3× → balance nitidez/memoria (antes se forzaba 1× en captura).
-       PDF: 2× basta para impresión nítida sin archivos enormes. */
-    if (isPng) return mobile ? 3 : 4;
+    /* PNG HD compatible con WhatsApp: captura 2× y normalización final a
+       2160×3840 en 9:16 (lado mayor 3840 px). Evita los PNG gigantes que
+       WhatsApp no ofrece enviar en HD. PDF conserva su escala anterior. */
+    if (isPng) return 2;
     return mobile ? 1.5 : 2;
   }
 
@@ -4141,6 +4179,7 @@ body.ux-map-open { overflow: hidden; }
     }
 
     if (outputFormat === "png") {
+      try { if (window.__normalizeReportHdCanvas) canvas = window.__normalizeReportHdCanvas(canvas); } catch (eHd) {}
       return new Promise(function (resolve, reject) {
         try {
           if (canvas.toBlob) {
@@ -13879,23 +13918,25 @@ var ReportKit = (function () {
       var placeTitleHTML = esc(place.toUpperCase());
       function iconoReporteSismico(tipo, size) {
         size = size || 36;
+        var stroke = "#B4D445";
+        var sw = size <= 20 ? 4.2 : 3.0;
         var line = "";
         if (tipo === "pin") {
-          line = '<path d="M32 56S14 39 14 24a18 18 0 1 1 36 0C50 39 32 56 32 56Z" fill="#D8EDF2" stroke="#2D718A" stroke-width="3" stroke-linejoin="round"/><circle cx="32" cy="24" r="7" fill="#E9B45B" stroke="#A77C20" stroke-width="2.5"/>';
+          line = '<path d="M32 56S14 39 14 24a18 18 0 1 1 36 0C50 39 32 56 32 56Z"/><circle cx="32" cy="24" r="7"/>';
         } else if (tipo === "magnitude") {
-          line = '<rect x="11" y="12" width="42" height="40" rx="9" fill="#EEF6F8" stroke="#2D718A" stroke-width="3"/><path d="M17 34h8l5-11 7 19 6-12h7" fill="none" stroke="#B75F4D" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>';
+          line = '<rect x="11" y="12" width="42" height="40" rx="9"/><path d="M17 34h8l5-11 7 19 6-12h7"/>';
         } else if (tipo === "quake") {
-          line = '<circle cx="32" cy="32" r="25" fill="#FFF6E4" stroke="#A77C20" stroke-width="2.8"/><path d="M10 34h11l5-12 8 22 6-14h14" fill="none" stroke="#2D718A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 50h30" stroke="#A77C20" stroke-width="2.5" stroke-linecap="round"/>';
+          line = '<path d="M8 34h12l5-13 8 24 7-17 5 6h11"/><path d="M16 50h32"/>';
         } else if (tipo === "depth") {
-          line = '<path d="M32 9v46M22 19 32 9l10 10M22 45l10 10 10-10" fill="none" stroke="#2D718A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>';
+          line = '<path d="M32 9v46M22 19 32 9l10 10M22 45l10 10 10-10"/>';
         } else if (tipo === "type") {
-          line = '<path d="M12 52h41M17 47V34h7v13M29 47V23h7v24M41 47V14h7v33" fill="#D8EDF2" stroke="#2D718A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="m16 27 11-8 9 3 13-10" fill="none" stroke="#A77C20" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>';
+          line = '<path d="M12 52h41M17 47V34h7v13M29 47V23h7v24M41 47V14h7v33"/><path d="m16 27 11-8 9 3 13-10"/>';
         } else if (tipo === "people") {
-          line = '<circle cx="32" cy="20" r="8" fill="#E9B45B" stroke="#A77C20" stroke-width="2.5"/><circle cx="15" cy="28" r="6" fill="#D8EDF2" stroke="#2D718A" stroke-width="2.3"/><circle cx="49" cy="28" r="6" fill="#D8EDF2" stroke="#2D718A" stroke-width="2.3"/><path d="M17 51c0-11 6-17 15-17s15 6 15 17M4 50c0-8 4-13 11-13 3 0 5 1 7 3M60 50c0-8-4-13-11-13-3 0-5 1-7 3" fill="#EEF6F8" stroke="#2D718A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+          line = '<circle cx="32" cy="20" r="8"/><circle cx="15" cy="28" r="6"/><circle cx="49" cy="28" r="6"/><path d="M17 51c0-11 6-17 15-17s15 6 15 17M4 50c0-8 4-13 11-13 3 0 5 1 7 3M60 50c0-8-4-13-11-13-3 0-5 1-7 3"/>';
         } else if (tipo === "wave") {
-          line = '<path d="M7 23c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 8 7M7 35c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 8 7M7 47c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 8 7" fill="none" stroke="#2D718A" stroke-width="3.4" stroke-linecap="round"/><circle cx="49" cy="13" r="5" fill="#E9B45B" stroke="#A77C20" stroke-width="2"/>';
+          line = '<path d="M7 23c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 8 7M7 35c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 8 7M7 47c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 8 7"/>';
         }
-        return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 64 64" style="display:block;width:' + size + 'px;height:' + size + 'px;flex:0 0 auto;">' + line + '</svg>';
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 64 64" fill="none" stroke="' + stroke + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;width:' + size + 'px;height:' + size + 'px;flex:0 0 auto;">' + line + '</svg>';
       }
       var iconoPinReporte = iconoReporteSismico("pin", 40);
       var iconoMagnitudReporte = iconoReporteSismico("magnitude", 42);
@@ -14005,35 +14046,35 @@ var ReportKit = (function () {
       var reportFileBase = "reporte-sismico-venezuela-" + eventDateKey + "-M" + mag.toFixed(1).replace(".", "-");
 
       wrap.innerHTML =
-        '<div id="quake-report-card" style="width:' + STORY_W + 'px;height:' + STORY_H + 'px;box-sizing:border-box;font-family:\'Segoe UI\',system-ui,-apple-system,sans-serif;margin:0;padding:0;background:#0b2e26;position:relative;overflow:hidden;color:#ffffff;position:relative;">' +
+        '<div id="quake-report-card" style="width:' + STORY_W + 'px;height:' + STORY_H + 'px;box-sizing:border-box;font-family:\'Segoe UI\',system-ui,-apple-system,sans-serif;margin:0;padding:0;background:#0b2e26;position:relative;overflow:hidden;color:#ffffff;position:relative;-webkit-text-size-adjust:100%;text-size-adjust:100%;">' +
           NRDesign.bg() +
           '<div style="padding:230px 48px 40px;position:relative;box-sizing:border-box;">' +
             '<div style="display:inline-block;color:#B4D445;font-size:16px;font-weight:800;letter-spacing:.10em;white-space:nowrap;">SIGP · OBSERVATORIO CLIMÁTICO</div>' +
             '<div id="quake-flyer-logos" style="display:flex;position:absolute;left:54px;right:54px;top:52px;height:110px;align-items:center;justify-content:space-between;gap:10px;z-index:2;">' +
-              '<div style="margin-left:-30px;position:relative;flex:0 0 420px;width:420px;height:110px;display:flex;align-items:center;justify-content:center;overflow:visible;"><img data-report-asset="logo" alt="Logo institucional izquierdo" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:auto;max-width:none;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.72));" onload="this.style.display=\'block\';this.parentNode.parentNode.style.display=\'flex\';" onerror="this.style.display=\'none\';this.parentNode.style.display=\'none\';" /></div>' +
+              '<div style="margin-left:-52px;position:relative;flex:0 0 420px;width:420px;height:110px;display:flex;align-items:center;justify-content:center;overflow:visible;"><img data-report-asset="logo" alt="Logo institucional izquierdo" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:auto;max-width:none;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.72));" onload="this.style.display=\'block\';this.parentNode.parentNode.style.display=\'flex\';" onerror="this.style.display=\'none\';this.parentNode.style.display=\'none\';" /></div>' +
               '<div style="position:relative;flex:0 0 420px;width:420px;height:110px;display:flex;align-items:center;justify-content:center;overflow:visible;"><img data-report-asset="logo" alt="Logo institucional derecho" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:auto;max-width:none;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.72));" onload="this.style.display=\'block\';this.parentNode.parentNode.style.display=\'flex\';" onerror="this.style.display=\'none\';this.parentNode.style.display=\'none\';" /></div>' +
             '</div>' +
-            '<div style="position:absolute;top:170px;left:68px;right:68px;height:1px;background:linear-gradient(90deg,#B4D445,rgba(180,212,69,0));"></div>' +
+            '<div style="position:absolute;top:196px;left:48px;right:48px;height:1px;background:linear-gradient(90deg,#B4D445,rgba(180,212,69,0));"></div>' +
               '<div style="margin-top:28px;max-width:70%;position:relative;z-index:1;">' +
               '<div style="font-size:64px;font-weight:900;line-height:1.02;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.18);">REPORTE<br/>SÍSMICO</div>' +
               '<div style="margin-top:18px;font-size:28px;font-weight:500;color:rgba(255,255,255,.92);">' + eventWhenHTML + '</div>' +
               '<div style="margin-top:8px;font-size:30px;font-weight:800;color:#B4D445;max-width:900px;">' + placeTitleHTML + '</div>' +
             '</div>' +
             '<div style="margin-top:32px;display:flex;gap:18px;">' +
-              '<div style="flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:16px 20px;display:flex;align-items:center;gap:16px;">' +
-                '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#FFF6E4;box-shadow:0 4px 12px rgba(0,0,0,.2),inset 0 0 0 2px rgba(255,255,255,.7);">' + iconoPinReporte + '</div>' +
-                '<div style="min-width:0;"><div style="font-size:16px;font-weight:800;color:#B4D445;letter-spacing:.04em;">COORDENADAS DEL EPICENTRO</div><div style="font-size:20px;font-weight:900;color:#fff;margin-top:2px;">' + coordsHTML + '</div></div>' +
+              '<div style="flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:16px 20px;display:flex;align-items:center;gap:16px;min-height:96px;box-sizing:border-box;">' +
+                '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(180,212,69,.10);border:1px solid rgba(180,212,69,.35);box-sizing:border-box;">' + iconoPinReporte + '</div>' +
+                '<div style="min-width:0;display:flex;flex-direction:column;justify-content:center;"><div style="font-size:16px;font-weight:800;color:#B4D445;letter-spacing:.04em;line-height:1.25;white-space:nowrap;">COORDENADAS DEL EPICENTRO</div><div style="font-size:20px;font-weight:900;color:#fff;margin-top:4px;line-height:1.25;white-space:nowrap;">' + coordsHTML + '</div></div>' +
               '</div>' +
-              '<div style="flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:16px 20px;display:flex;align-items:center;gap:16px;">' +
-                '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#FFF6E4;box-shadow:0 4px 12px rgba(0,0,0,.2),inset 0 0 0 2px rgba(255,255,255,.7);">' + iconoMagnitudReporte + '</div>' +
-                '<div><div style="font-size:16px;font-weight:800;color:#B4D445;letter-spacing:.04em;">MAGNITUD</div><div style="font-size:30px;font-weight:900;color:#fff;margin-top:2px;">M ' + mag.toFixed(1) + ' · ' + severity + '</div></div>' +
+              '<div style="flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:16px 20px;display:flex;align-items:center;gap:16px;min-height:96px;box-sizing:border-box;">' +
+                '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(180,212,69,.10);border:1px solid rgba(180,212,69,.35);box-sizing:border-box;">' + iconoMagnitudReporte + '</div>' +
+                '<div style="min-width:0;display:flex;flex-direction:column;justify-content:center;"><div style="font-size:16px;font-weight:800;color:#B4D445;letter-spacing:.04em;line-height:1.25;white-space:nowrap;">MAGNITUD</div><div style="font-size:30px;font-weight:900;color:#fff;margin-top:4px;line-height:1.15;white-space:nowrap;">M ' + mag.toFixed(1) + ' · ' + severity + '</div></div>' +
               '</div>' +
             '</div>' +
           '</div>' +
           '<div style="position:relative;z-index:1;padding:6px 44px 26px;box-sizing:border-box;">' +
             '<div style="display:flex;align-items:center;gap:22px;background:rgba(8,31,26,.80);border:1px solid rgba(255,255,255,.14);border-radius:27px;padding:22px 26px;margin-bottom:18px;box-shadow:0 10px 30px rgba(0,0,0,.25);">' +
               '<div style="flex-shrink:0;width:130px;height:130px;display:flex;align-items:center;justify-content:center;">' +
-                '<div style="width:116px;height:116px;border-radius:50%;background:#FFF6E4;border:3px solid ' + magColor + ';display:flex;align-items:center;justify-content:center;box-shadow:0 5px 16px ' + magColor + '28,inset 0 0 0 6px #fff;">' +
+                '<div style="width:116px;height:116px;border-radius:50%;background:rgba(8,31,26,.72);border:2px solid rgba(180,212,69,.55);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 16px rgba(0,0,0,.25);">' +
                   iconoSismoReporte +
                 '</div>' +
               '</div>' +
@@ -14045,9 +14086,9 @@ var ReportKit = (function () {
               '</div>' +
             '</div>' +
             '<div style="background:rgba(8,31,26,.80);border:1px solid rgba(255,255,255,.14);border-radius:28px;padding:22px 22px 19px;margin-bottom:17px;box-shadow:0 10px 30px rgba(0,0,0,.25);">' +
-              '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 4px 13px;">' +
-                '<div><div style="font-size:26px;font-weight:950;color:#ffffff;">MAPA DE VENEZUELA</div><div style="font-size:14px;font-weight:700;letter-spacing:.04em;color:#9fc2ad;margin-top:4px;">ANILLOS DE ALCANCE Y LOCALIDADES CERCANAS</div></div>' +
-                '<div style="font-size:14px;font-weight:900;color:#9b3d34;background:#fff1ed;border:1px solid #f1c8bf;border-radius:999px;padding:7px 12px;">COORDENADAS · ' + coordsHTML + '</div>' +
+              '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:nowrap;margin:0 4px 13px;">' +
+                '<div style="flex:1;min-width:0;"><div style="font-size:26px;font-weight:950;color:#ffffff;line-height:1.2;">MAPA DE VENEZUELA</div><div style="font-size:14px;font-weight:700;letter-spacing:.04em;color:#9fc2ad;margin-top:4px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ANILLOS DE ALCANCE Y LOCALIDADES CERCANAS</div></div>' +
+                '<div style="font-size:14px;font-weight:900;color:#9b3d34;background:#fff1ed;border:1px solid #f1c8bf;border-radius:999px;padding:7px 12px;white-space:nowrap;flex-shrink:0;line-height:1.25;">COORDENADAS · ' + coordsHTML + '</div>' +
               '</div>' +
               '<div id="quake-report-map" style="width:100%;height:650px;position:relative;overflow:hidden;border-radius:22px;border:1px solid #dce8e5;background:#eaf3f6;">' +
                 '<div id="quake-report-map-fallback" style="position:absolute;inset:0;z-index:0;pointer-events:none;">' + mapSVG + '</div>' +
@@ -15444,7 +15485,7 @@ var ReportKit = (function () {
       function buildReport(data) {
         var logos =
           '<div id="rain-map-report-logos" style="display:flex;position:absolute;left:54px;right:54px;top:52px;height:110px;align-items:center;justify-content:space-between;gap:10px;z-index:2;">' +
-            '<div style="margin-left:-46px;position:relative;flex:0 0 420px;width:420px;height:110px;display:flex;align-items:center;justify-content:center;overflow:visible;"><img data-report-asset="logo" alt="" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:auto;max-width:none;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.72));" onload="this.style.display=\'block\';this.parentNode.parentNode.style.display=\'flex\';" onerror="this.style.display=\'none\';this.parentNode.style.display=\'none\';" /></div>' +
+            '<div style="margin-left:-52px;position:relative;flex:0 0 420px;width:420px;height:110px;display:flex;align-items:center;justify-content:center;overflow:visible;"><img data-report-asset="logo" alt="" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:auto;max-width:none;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.72));" onload="this.style.display=\'block\';this.parentNode.parentNode.style.display=\'flex\';" onerror="this.style.display=\'none\';this.parentNode.style.display=\'none\';" /></div>' +
             '<div style="position:relative;flex:0 0 420px;width:420px;height:110px;display:flex;align-items:center;justify-content:center;overflow:visible;"><img data-report-asset="logo" alt="" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:auto;max-width:none;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.72));" onload="this.style.display=\'block\';this.parentNode.parentNode.style.display=\'flex\';" onerror="this.style.display=\'none\';this.parentNode.style.display=\'none\';" /></div>' +
           '</div>';
         var legend =
@@ -15459,7 +15500,7 @@ var ReportKit = (function () {
           '<div style="padding:230px 48px 34px;position:relative;box-sizing:border-box;">' +
               '<div style="display:inline-block;color:#B4D445;font-size:16px;font-weight:800;letter-spacing:.10em;white-space:nowrap;">SIGP · OBSERVATORIO CLIMÁTICO</div>' +
               logos +
-              '<div style="position:absolute;top:196px;left:64px;right:64px;height:1px;background:linear-gradient(90deg,#B4D445,rgba(180,212,69,0));"></div>' +
+              '<div style="position:absolute;top:196px;left:48px;right:48px;height:1px;background:linear-gradient(90deg,#B4D445,rgba(180,212,69,0));"></div>' +
               '<div style="margin-top:28px;max-width:78%;position:relative;z-index:1;">' +
                 '<div style="font-size:62px;font-weight:900;line-height:1.02;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.18);">REPORTE VISUAL<br/>DE LLUVIA</div>' +
                 '<div style="margin-top:17px;font-size:20px;font-weight:550;color:rgba(255,255,255,.93);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc((dateLabel + " · " + timeLabel + " · HORA DE VENEZUELA").toUpperCase()) + '</div>' +
