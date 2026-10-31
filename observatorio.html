@@ -2493,14 +2493,29 @@ body.ux-map-open { overflow: hidden; }
 #obs-save-dialog .osd-status[data-kind="ok"] { border-color: #3f6b3a; color: #b9e6a8; }
 #obs-save-dialog .osd-status[data-kind="warn"] { border-color: #7a6a2a; color: #f5e6a3; }
 #obs-save-dialog .osd-status[data-kind="error"] { border-color: #7a3a34; color: #ffb4ab; }
-#obs-save-dialog .osd-conflict { display: grid; gap: 8px; border-color: #7a6a2a; }
 #obs-save-dialog a { color: #B4D445; }
+
+/* Indicador pequeño de autoguardado, igual estilo del SIGP. */
+#obs-app #obs-autosave-indicator {
+  position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 4200;
+  display: none; max-width: min(360px, calc(100vw - 24px)); box-sizing: border-box;
+  padding: 6px 12px; border-radius: 20px; border: 1px solid #B4D445;
+  background: rgba(19, 82, 66, .95); color: #B4D445;
+  font-size: 10px; font-weight: 700; line-height: 1.35; letter-spacing: .01em;
+  box-shadow: 0 4px 10px rgba(0,0,0,.4); pointer-events: none;
+}
+#obs-app #obs-autosave-indicator[data-kind="warn"] { border-color: #fbbf24; color: #fbbf24; }
+#obs-app #obs-autosave-indicator[data-kind="error"] { border-color: #f87171; color: #f87171; }
+@media (max-width: 900px) {
+  #obs-app #obs-autosave-indicator { left: 10px; bottom: calc(84px + env(safe-area-inset-bottom)); font-size: 10px; }
+}
+#obs-app.ux-map-expanded #obs-autosave-indicator { bottom: calc(12px + env(safe-area-inset-bottom)); }
 @media (max-width: 520px) {
   #obs-save-dialog { width: 94vw; }
   #obs-save-dialog .osd-head { padding: 14px 16px 10px; }
   #obs-save-dialog .osd-body { padding: 14px 16px 16px; }
 }
-@media print { #obs-save-dialog, #obs-save-disclosure, .ux-save-btn { display: none !important; } }
+@media print { #obs-save-dialog, #obs-save-disclosure, .ux-save-btn, #obs-autosave-indicator { display: none !important; } }
 
 </style>
 </head>
@@ -16254,8 +16269,8 @@ var ReportKit = (function () {
         return '<div style="background:rgba(8,31,26,.80);border-top:3px solid #B4D445;border-radius:0 0 20px 20px;padding:18px 14px 20px;overflow:hidden;">' +
           '<div style="display:flex;align-items:center;gap:8px;color:#8fb8a2;white-space:nowrap;">' + NR_LINE(ico) +
           '<span style="font-size:13px;letter-spacing:.06em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + "</span></div>" +
-          '<div style="font-size:26px;font-weight:800;color:#fff;margin-top:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + cond + "</div>" +
-          '<div style="font-size:16px;color:#cfe3d6;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><b style="color:#fff;">' + t + "</b> · sens " + sens + "</div>" +
+          '<div data-fit-text="period" data-fit-max="26" data-fit-min="18" data-fit-lines="2" data-fit-lh="1.15" style="font-size:26px;font-weight:800;color:#fff;margin-top:10px;line-height:1.15;min-height:60px;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:normal;">' + cond + "</div>" +
+          '<div data-fit-text="period-temp" data-fit-max="16" data-fit-min="13" data-fit-lines="1" data-fit-lh="1.25" style="font-size:16px;color:#cfe3d6;margin-top:10px;white-space:nowrap;overflow:visible;text-overflow:clip;"><b style="color:#fff;">' + t + "</b> · sens " + sens + "</div>" +
           '<div style="font-size:16px;font-weight:700;color:#6fd3c4;margin-top:6px;white-space:nowrap;">Lluvia ' + rain + "%</div></div>";
       };
       var nrMet = function (ico, k, v, s) {
@@ -16267,9 +16282,9 @@ var ReportKit = (function () {
       var nrRecHtml = nrRecs.map(function (a) {
         return '<div style="border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:16px 14px 18px;background:rgba(8,31,26,.80);overflow:hidden;min-height:150px;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;color:#B4D445;">' +
-          '<span style="font-size:11px;letter-spacing:.06em;font-weight:700;color:#8fb8a2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">' + (a.title || "") + "</span>" +
+          '<span data-fit-text="rec-title" data-fit-max="11" data-fit-min="9" data-fit-lines="2" data-fit-lh="1.25" style="font-size:11px;letter-spacing:.06em;font-weight:700;color:#8fb8a2;display:block;white-space:normal;overflow:visible;text-overflow:clip;flex:1;min-width:0;">' + (a.title || "") + "</span>" +
           NR_LINE(nrRecIcon(a.title)) + "</div>" +
-          '<div style="font-size:15px;font-weight:800;color:#fff;margin-top:14px;line-height:1.25;">' + (a.note || a.title || "") + "</div></div>";
+          '<div data-fit-text="rec-note" data-fit-max="15" data-fit-min="12" data-fit-lines="4" data-fit-lh="1.25" style="font-size:15px;font-weight:800;color:#fff;margin-top:14px;line-height:1.25;overflow:visible;overflow-wrap:normal;">' + (a.note || a.title || "") + "</div></div>";
       }).join("");
 
       wrap.innerHTML =
@@ -16292,7 +16307,7 @@ var ReportKit = (function () {
         '<div style="position:absolute;top:236px;left:0;right:0;font-size:18px;letter-spacing:.12em;color:#B4D445;font-weight:700;text-transform:uppercase;white-space:nowrap;">Observatorio climático · SIGP</div>' +
         '<div style="position:absolute;top:280px;left:0;right:0;white-space:nowrap;font-size:84px;line-height:.98;font-weight:800;color:#fff;">Reporte<br>climático diario</div>' +
         '<div style="position:absolute;top:500px;left:0;right:0;display:flex;justify-content:space-between;align-items:center;gap:12px;">' +
-        '<div style="font-size:22px;color:#cfe3d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">' + dateLong + "</div>" +
+        '<div data-fit-text="date" data-fit-max="22" data-fit-min="16" data-fit-lines="1" data-fit-lh="1.25" style="font-size:22px;color:#cfe3d6;white-space:nowrap;overflow:visible;text-overflow:clip;flex:1;min-width:0;">' + dateLong + "</div>" +
         '<div style="font-size:20px;color:#B4D445;font-weight:700;letter-spacing:.03em;white-space:nowrap;text-align:right;flex-shrink:0;">' + String(place).toUpperCase() + "</div></div>" +
 
         /* Pronóstico: icono lineal lima a la izquierda + texto + temperatura */
@@ -16300,7 +16315,7 @@ var ReportKit = (function () {
         '<div style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;min-width:168px;">' + icoForecast + '</div>' +
         '<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">' +
         '<div style="font-size:18px;letter-spacing:.24em;color:#B4D445;font-weight:700;line-height:1.2;">PRONÓSTICO HOY</div>' +
-        '<div style="font-size:68px;font-weight:800;color:#fff;margin-top:12px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + cond + "</div>" +
+        '<div data-fit-text="hero" data-fit-max="68" data-fit-min="34" data-fit-lines="2" data-fit-lh="1.05" style="font-size:68px;font-weight:800;color:#fff;margin-top:12px;line-height:1.05;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:normal;">' + cond + "</div>" +
         '<div style="margin-top:28px;font-size:24px;color:#cfe3d6;">Sensación <b style="color:#f5b24a;">' +
         (feelsMax != null ? feelsMax + "°C" : "--") + " / " + (feelsMin != null ? feelsMin + "°C" : "--") + "</b></div></div>" +
         '<div style="flex:0 0 34%;min-width:0;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="font-size:140px;font-weight:800;line-height:.9;color:#fff;letter-spacing:-.03em;">' +
@@ -16333,12 +16348,54 @@ var ReportKit = (function () {
         /* Resumen */
         '<div style="position:absolute;top:1670px;left:0;right:0;border:1px solid rgba(255,255,255,.14);border-left:4px solid #B4D445;padding:16px 20px 18px 22px;background:rgba(8,31,26,.80);border-radius:16px;">' +
         '<div style="font-size:18px;letter-spacing:.2em;color:#B4D445;font-weight:700;">RESUMEN</div>' +
-        '<div style="font-size:22px;line-height:1.4;color:#e8f3ec;margin-top:8px;">' + resumen + "</div></div>" +
+        '<div data-fit-text="summary" data-fit-max="22" data-fit-min="16" data-fit-lines="6" data-fit-lh="1.4" style="font-size:22px;line-height:1.4;color:#e8f3ec;margin-top:8px;overflow:visible;overflow-wrap:normal;">' + resumen + "</div></div>" +
 
         "</div></div>";
 
       document.body.appendChild(wrap);
       var card = document.getElementById("flyer-card");
+      /* Ajuste automático de textos variables del reporte diario.
+         Evita que DESPEJADO, MAYORMENTE DESPEJADO, PARCIALMENTE NUBLADO,
+         LLOVIZNA INTENSA, CHUBASCOS FUERTES, TORMENTA, etc. se corten. */
+      function ajustarTextosReporteDiario() {
+        if (!card) return;
+        var nodes = card.querySelectorAll("[data-fit-text]");
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          var cs = window.getComputedStyle(el);
+          var max = parseFloat(el.getAttribute("data-fit-max")) || parseFloat(cs.fontSize) || 16;
+          var min = parseFloat(el.getAttribute("data-fit-min")) || Math.max(8, max * 0.6);
+          var lines = parseInt(el.getAttribute("data-fit-lines"), 10) || 1;
+          var lh = parseFloat(el.getAttribute("data-fit-lh"));
+          if (!isFinite(lh) || lh <= 0) {
+            var computedLh = parseFloat(cs.lineHeight);
+            lh = isFinite(computedLh) && computedLh > 0 ? computedLh / max : 1.2;
+          }
+          var minH = parseFloat(cs.minHeight) || 0;
+          el.style.overflow = "visible";
+          el.style.textOverflow = "clip";
+          el.style.overflowWrap = "normal";
+          el.style.wordBreak = "normal";
+          el.style.lineHeight = String(lh);
+          function fits(size) {
+            el.style.fontSize = size + "px";
+            el.style.whiteSpace = lines <= 1 ? "nowrap" : "normal";
+            var widthOk = el.scrollWidth <= el.clientWidth + 1;
+            var limitH = Math.max(minH, Math.ceil(lines * size * lh)) + 2;
+            var heightOk = el.scrollHeight <= limitH;
+            return widthOk && heightOk;
+          }
+          var size = max;
+          while (size > min && !fits(size)) size -= 0.5;
+          if (!fits(size)) {
+            /* Último recurso: no recortar ni ocultar palabras. */
+            el.style.fontSize = min + "px";
+            el.style.whiteSpace = lines <= 1 ? "nowrap" : "normal";
+            el.style.maxHeight = "none";
+          }
+        }
+      }
+
       try {
         var logosBox = document.getElementById("flyer-logos");
         if (logosBox) {
@@ -16357,6 +16414,7 @@ var ReportKit = (function () {
          1º recorta relleno inferior sobrante, 2º si aún no cabe, la caja crece
          y el archivo elegido se exporta proporcional (sin deformar ni recortar). */
       function ajustarAlto() {
+        ajustarTextosReporteDiario();
         var cuerpo = card.children[card.children.length - 1];
         var alto = card.scrollHeight;
         if (alto > STORY_H && cuerpo) {
@@ -17206,7 +17264,8 @@ var ReportKit = (function () {
 /* Guardado del Observatorio Climático por CORREO, igual que los mapas del SIGP.
    El usuario entra con su correo y su mapa (chinchas, flechas, polígonos,
    indicadores, capas, zoom) se carga y se guarda solo en Supabase.
-   Tabla propia: observatorio_mapas. No lee ni escribe mapas_comunales.
+   Usa la misma fila de mapas_comunales y el bloque geometria_mapa.observatorio_climatico.
+   Autoguardado cada 30 segundos con aviso pequeño, sin diálogos de conflicto.
    Los reportes no se modifican. */
 (function () {
   'use strict';
@@ -17226,9 +17285,9 @@ var ReportKit = (function () {
   var started = false, restoring = false, settling = false;
   var saveTimer = null, cloudTimer = null, settleTimer = null, autosaveInterval = null;
   var rowId = null;
-  var lastCloudAt = null, dirty = false, conflictRemote = null;
+  var lastCloudAt = null, dirty = false, cloudBusy = false;
   var cloudState = 'local';
-  var dialog, statusBox, accountBox, localBox, conflictBox, saveBtn, summary;
+  var dialog, statusBox, accountBox, localBox, saveBtn, summary;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { var e = document.createElement('span'); e.textContent = String(s == null ? '' : s); return e.innerHTML; }
@@ -17258,6 +17317,32 @@ var ReportKit = (function () {
     t.hidden = false;
     clearTimeout(t._obsSaveTimer);
     t._obsSaveTimer = setTimeout(function () { t.hidden = true; }, 4200);
+  }
+
+  /* Aviso pequeño de autoguardado, como el indicador del SIGP. */
+  function autosaveIndicator(msg, kind) {
+    var ind = $('obs-autosave-indicator');
+    if (!ind) return;
+    ind.textContent = msg;
+    ind.setAttribute('data-kind', kind || 'ok');
+    ind.hidden = false;
+    ind.style.display = 'block';
+    clearTimeout(ind._obsAutoTimer);
+    ind._obsAutoTimer = setTimeout(function () {
+      ind.style.display = 'none';
+      ind.hidden = true;
+    }, 7000);
+  }
+
+  function clockTime() {
+    try { return new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+    catch (e) { return new Date().toLocaleTimeString(); }
+  }
+
+  function backupRemote(scene, at) {
+    try {
+      lsSet('obs_climatico_remote_backup_v1:' + identityKey(), JSON.stringify({ scene: scene, at: at || null, backedUpAt: nowISO() }));
+    } catch (e) {}
   }
 
   function setState(state, text) {
@@ -17493,8 +17578,10 @@ var ReportKit = (function () {
     dirty = true;
     writeMeta({ dirty: true, localAt: scene.updatedAt, reason: reason || 'change' });
     if (activeEmail && client) {
-      setState('pending', 'Guardando cambios de ' + activeEmail + '…');
-      scheduleCloud();
+      if (!cloudBusy) {
+        setState('pending', 'Guardando cambios de ' + activeEmail + '…');
+        scheduleCloud();
+      }
     } else if (activeEmail) {
       setState('local', 'Guardado en este navegador para ' + activeEmail + '.');
     } else {
@@ -17579,10 +17666,12 @@ var ReportKit = (function () {
       var remoteAt = res.actualizado_en || (remote && remote.updatedAt) || null;
 
       if (remote && remoteAt && lastCloudAt && remoteAt > lastCloudAt && dirty && local) {
-        conflictRemote = { scene: remote, at: remoteAt };
-        setState('pending', 'Hay cambios en la nube y en este dispositivo. Elige cuál conservar.');
+        /* Sin cartel de conflicto: se conserva una copia de la nube y se
+           suben los cambios de este dispositivo en el autoguardado. */
+        backupRemote(remote, remoteAt);
+        setState('pending', 'Sincronizando los cambios de ' + activeEmail + '…');
         renderDialog();
-        openDialog();
+        scheduleCloud();
         return;
       }
       if (remote && (!local || !dirty || (remote.updatedAt || '') >= (local.updatedAt || ''))) {
@@ -17619,36 +17708,39 @@ var ReportKit = (function () {
 
   function scheduleCloud() {
     clearTimeout(cloudTimer);
-    if (!activeEmail || !client || conflictRemote) return;
-    cloudTimer = setTimeout(function () { saveCloud(true); }, AUTOSAVE_MS);
+    if (!activeEmail || !client) return;
+    cloudTimer = setTimeout(function () { if (dirty) saveCloud(true); }, AUTOSAVE_MS);
   }
 
   function saveCloud(silent) {
     if (!activeEmail) { openDialog(); return Promise.resolve(false); }
     if (!client) {
       setState('local', 'Sin conexión a la nube. El mapa de ' + activeEmail + ' quedó guardado en este navegador.');
-      if (!silent) toast('Sin conexión a la nube. Guardado localmente.');
+      if (!silent) autosaveIndicator('💾 Guardado en este navegador. Sin nube por ahora.', 'warn');
       return Promise.resolve(false);
     }
-    if (conflictRemote) { openDialog(); return Promise.resolve(false); }
+    if (cloudBusy) return Promise.resolve(false);
+    cloudBusy = true;
+    clearTimeout(cloudTimer); cloudTimer = null;
     var scene = flushLocal() || captureScene();
     setState('pending', 'Guardando el mapa de ' + activeEmail + '…');
-    return remoteLoad().then(function (res) {
+    return remoteLoad().catch(function () { return null; }).then(function (res) {
       if (res && res.ok === true) {
         rowId = res.id || rowId;
         var remoteScene = res.escena ? validateScene(res.escena) : null;
         var remoteAt = res.actualizado_en || (remoteScene && remoteScene.updatedAt) || null;
-        if (remoteScene && remoteAt && lastCloudAt && remoteAt > lastCloudAt && dirty) {
-          conflictRemote = { scene: remoteScene, at: remoteAt };
-          setState('pending', 'Otro dispositivo guardó cambios. Elige cuál versión conservar.');
-          renderDialog();
-          if (!silent) openDialog();
-          return false;
+        if (remoteScene && remoteAt && remoteAt > scene.updatedAt) {
+          /* Respaldo silencioso de la versión remota y prioridad a lo que el
+             usuario acaba de dibujar en este dispositivo, sin preguntar. */
+          backupRemote(remoteScene, remoteAt);
+          var nextMs = Math.max(Date.now(), (Date.parse(remoteAt) || 0) + 1);
+          scene.updatedAt = new Date(nextMs).toISOString();
+          writeLocal(scene);
+          writeMeta({ localAt: scene.updatedAt, dirty: true });
         }
       }
       return client.rpc('observatorio_guardar_en_mapa', { p_correo: activeEmail, p_escena: scene });
     }).then(function (res) {
-      if (res === false) return false;
       if (res && res.error) throw res.error;
       var data = res && res.data ? res.data : null;
       if (data && data.ok === false) {
@@ -17661,11 +17753,16 @@ var ReportKit = (function () {
       }
       rowId = data && data.id ? data.id : rowId;
       lastCloudAt = data && data.actualizado_en ? data.actualizado_en : scene.updatedAt;
-      dirty = false;
-      writeMeta({ lastCloudAt: lastCloudAt, dirty: false, localAt: scene.updatedAt });
+      var currentLocal = readLocal();
+      if (!currentLocal || currentLocal.updatedAt === scene.updatedAt) {
+        dirty = false;
+        writeMeta({ lastCloudAt: lastCloudAt, dirty: false, localAt: scene.updatedAt });
+      } else {
+        writeMeta({ lastCloudAt: lastCloudAt });
+      }
       setState('cloud', 'Mapa de ' + activeEmail + ' guardado en mapas_comunales.geometria_mapa. ' + fmtTime(lastCloudAt) + '.');
       renderDialog();
-      if (!silent) toast('Mapa guardado en la misma fila del SIGP. Autoguardado cada 30 segundos.');
+      autosaveIndicator((silent ? '☁️ Guardado confirmado en la nube ' : '☁️ Mapa guardado en la nube ') + clockTime(), 'ok');
       return true;
     }).catch(function (err) {
       console.warn('Error al guardar en Supabase', err);
@@ -17678,8 +17775,10 @@ var ReportKit = (function () {
         setState('error', 'No se pudo sincronizar con la nube. El mapa quedó guardado en este navegador.');
       }
       renderDialog();
-      if (!silent) toast('No se pudo guardar en la nube. La copia local está a salvo.');
+      autosaveIndicator('⚠️ Copia local guardada; se reintentará.', 'warn');
       return false;
+    }).finally(function () {
+      cloudBusy = false;
     });
   }
 
@@ -17695,33 +17794,10 @@ var ReportKit = (function () {
     flushLocal();
     activeEmail = email;
     lsSet(EMAIL_KEY, email);
-    conflictRemote = null;
     lastCloudAt = null;
     dirty = false;
     showStatus('ok', 'Cargando el mapa de ' + email + '…');
     loadForEmail();
-  }
-
-  function resolveConflict(useRemote) {
-    if (!conflictRemote) return;
-    if (useRemote) {
-      restoreScene(conflictRemote.scene);
-      writeLocal(conflictRemote.scene);
-      lastCloudAt = conflictRemote.at;
-      dirty = false;
-      writeMeta({ lastCloudAt: lastCloudAt, dirty: false, localAt: conflictRemote.scene.updatedAt });
-      setState('cloud', 'Se cargó la versión de la nube.');
-      conflictRemote = null;
-      renderDialog();
-    } else {
-      lastCloudAt = conflictRemote.at;
-      dirty = true;
-      writeMeta({ lastCloudAt: lastCloudAt, dirty: true });
-      conflictRemote = null;
-      setState('pending', 'Se conservará la versión de este dispositivo.');
-      renderDialog();
-      saveCloud(false);
-    }
   }
 
   /* ---------- UI ---------- */
@@ -17770,7 +17846,7 @@ var ReportKit = (function () {
       btn.onclick = function () {
         flushLocal();
         if (activeEmail && client) saveCloud(false);
-        else if (activeEmail) { setState('local', 'Mapa de ' + activeEmail + ' guardado en este navegador.'); toast('Guardado en este navegador. Sin nube por ahora.'); }
+        else if (activeEmail) { setState('local', 'Mapa de ' + activeEmail + ' guardado en este navegador.'); autosaveIndicator('💾 Guardado en este navegador ' + clockTime(), 'warn'); }
         else openDialog();
       };
     }
@@ -17797,6 +17873,15 @@ var ReportKit = (function () {
       $('obs-save-open').onclick = openDialog;
     }
 
+    if (!$('obs-autosave-indicator')) {
+      var autoInd = document.createElement('div');
+      autoInd.id = 'obs-autosave-indicator';
+      autoInd.setAttribute('role', 'status');
+      autoInd.setAttribute('aria-live', 'polite');
+      autoInd.hidden = true;
+      ($('obs-app') || document.body).append(autoInd);
+    }
+
     if (!$('obs-save-dialog')) {
       dialog = document.createElement('dialog');
       dialog.id = 'obs-save-dialog';
@@ -17807,7 +17892,6 @@ var ReportKit = (function () {
           '<p class="osd-status" id="osd-status" hidden></p>' +
           '<section class="osd-card"><h3>Correo del mapa</h3><div id="osd-account"></div></section>' +
           '<section class="osd-card"><h3>Este navegador</h3><p id="osd-local-text">Guardado local automático.</p></section>' +
-          '<section class="osd-card osd-conflict" id="osd-conflict" hidden><h3>Conflicto de versiones</h3><p>Hay cambios en la nube y en este dispositivo. Elige cuál conservar.</p><div class="osd-actions"><button type="button" class="osd-btn" id="osd-use-remote">Usar la nube</button><button type="button" class="osd-btn primary" id="osd-use-local">Usar este dispositivo</button></div></section>' +
           '<p class="osd-note">Se guarda en la misma fila de mapas_comunales del correo que usaste en el SIGP, dentro de geometria_mapa. Autoguardado cada 30 segundos. Tus dibujos del SIGP y del observatorio se conservan por separado.</p>' +
           '<div class="osd-actions"><button type="button" class="osd-btn primary" id="osd-save">Guardar ahora</button><button type="button" class="osd-btn" id="osd-done">Cerrar</button></div>' +
         '</div>';
@@ -17816,7 +17900,6 @@ var ReportKit = (function () {
       statusBox = $('osd-status');
       localBox = $('osd-local-text');
       accountBox = $('osd-account');
-      conflictBox = $('osd-conflict');
       $('osd-close').onclick = closeDialog;
       $('osd-done').onclick = closeDialog;
       $('osd-save').onclick = function () {
@@ -17825,8 +17908,6 @@ var ReportKit = (function () {
         else if (activeEmail) showStatus('warn', 'Sin conexión a la nube por ahora. Tu mapa quedó guardado en este navegador.');
         else showStatus('warn', 'Primero escribe tu correo para guardar el mapa en la nube.');
       };
-      $('osd-use-remote').onclick = function () { resolveConflict(true); };
-      $('osd-use-local').onclick = function () { resolveConflict(false); };
       dialog.addEventListener('click', function (e) {
         if (e.target === dialog) {
           var r = dialog.getBoundingClientRect();
@@ -17835,7 +17916,7 @@ var ReportKit = (function () {
       });
     } else {
       dialog = $('obs-save-dialog');
-      statusBox = $('osd-status'); localBox = $('osd-local-text'); accountBox = $('osd-account'); conflictBox = $('osd-conflict');
+      statusBox = $('osd-status'); localBox = $('osd-local-text'); accountBox = $('osd-account');
     }
     renderDialog();
   }
@@ -17861,7 +17942,6 @@ var ReportKit = (function () {
         ? 'Copia local: ' + fmtTime(local.updatedAt) + '. Dibujos: ' + local.drawings.items.length + '.'
         : 'Todavía no hay copia local. Dibuja en el mapa y se guarda solo.';
     }
-    if (conflictBox) conflictBox.hidden = !conflictRemote;
     if (!accountBox) return;
 
     if (activeEmail) {
@@ -17869,7 +17949,7 @@ var ReportKit = (function () {
         '<p>Mapa de <strong>' + esc(activeEmail) + '</strong>.</p>' +
         '<p class="osd-note">' + (cloudState === 'cloud' && lastCloudAt ? 'Guardado en la nube: ' + fmtTime(lastCloudAt) + '.' : 'Autoguardado en mapas_comunales.geometria_mapa cada 30 segundos.') + '</p>' +
         '<div class="osd-actions" style="margin-top:10px"><button type="button" class="osd-btn" id="osd-reload">Recargar mi mapa</button><button type="button" class="osd-btn" id="osd-change">Usar otro correo</button></div>';
-      $('osd-reload').onclick = function () { conflictRemote = null; loadForEmail(); };
+      $('osd-reload').onclick = function () { loadForEmail(); };
       $('osd-change').onclick = function () { renderEmailForm(); };
     } else {
       renderEmailForm();
@@ -17930,7 +18010,7 @@ var ReportKit = (function () {
         var email = normEmail(e.newValue);
         if (email && email !== activeEmail) {
           activeEmail = email;
-          conflictRemote = null; lastCloudAt = null; dirty = false;
+          lastCloudAt = null; dirty = false;
           loadForEmail();
         }
       }
@@ -17972,7 +18052,7 @@ var ReportKit = (function () {
     loadForEmail();
     clearInterval(autosaveInterval);
     autosaveInterval = setInterval(function () {
-      if (activeEmail && client && dirty && !conflictRemote && !restoring && !settling) saveCloud(true);
+      if (activeEmail && client && dirty && !restoring && !settling) saveCloud(true);
     }, AUTOSAVE_MS);
     if (!activeEmail) {
       // Sin correo: aviso no bloqueante. El diálogo se abre al pulsar Guardar.
