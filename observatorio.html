@@ -1928,9 +1928,12 @@ window.WAVE_ARCHIVE_SNAPSHOT = [{"f": 1788998400000, "l": 1788998400000, "p": 20
 #obs-app .aqi-details { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
 #obs-app .aqi-item { padding: 12px; border: 1px solid #e7eee9; border-radius: 10px; background: #f7faf8; color: #6c8071; font-size: 10px; text-align: center; }
 #obs-app .aqi-item strong { margin-bottom: 3px; color: #31563d; font-size: 22px; font-weight: 650; }
-#obs-app .metric-tip { z-index: 1500; max-width: min(280px,calc(100vw - 28px)); padding: 12px 34px 12px 13px; border-radius: 10px; background: #173e2e; color: #fff; font-size: 12px; font-weight: 400; line-height: 1.5; text-transform: none; box-shadow: 0 8px 24px #12372330; }
-#obs-app .metric-tip.show { pointer-events: auto; }
-#obs-app .metric-tip .tip-close { top: 5px; right: 5px; width: 26px; height: 26px; }
+#obs-app .metric-tip, body > .metric-tip.ux-tip-popover { z-index: 1500; max-width: min(280px,calc(100vw - 28px)); padding: 12px 34px 12px 13px; border-radius: 10px; background: #173e2e; color: #fff; font-size: 12px; font-weight: 400; line-height: 1.5; text-transform: none; box-shadow: 0 8px 24px #12372330; }
+#obs-app .metric-tip.show, body > .metric-tip.ux-tip-popover.show { pointer-events: auto; }
+#obs-app .metric-tip .tip-close, body > .metric-tip.ux-tip-popover .tip-close { top: 5px; right: 5px; width: 26px; height: 26px; }
+body > .metric-tip.ux-tip-popover { position: fixed; z-index: 10050; display: block; box-sizing: border-box; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+body > .metric-tip.ux-tip-popover .tip-text { display: block; }
+@media (max-width: 900px) { #obs-app .layer-btn, #obs-app .metric, #obs-app .leg-tip { touch-action: manipulation; } }
 #obs-app .ux-info-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin: -5px 0 -5px auto; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #819487; }
 #obs-app .ux-info-button:hover { background: #edf4ef; color: #2c6a45; }
 #obs-app .ux-info-button .ux-icon { width: 16px; height: 16px; }
@@ -3199,6 +3202,78 @@ body.ux-map-open { overflow: hidden; }
   <script>
 (function () {
   "use strict";
+
+/* Hornea el radar de lluvia en el mapa del reporte móvil antes de html2canvas.
+   En escritorio no hace nada: el reporte conserva exactamente su flujo actual. */
+(function () {
+  "use strict";
+  function mobile() {
+    return window.matchMedia("(max-width: 900px)").matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  }
+  function loaded(img) {
+    return img.complete && img.naturalWidth > 0;
+  }
+  function waitTileImages(root, ms) {
+    var imgs = Array.prototype.slice.call(root.querySelectorAll(".leaflet-tile-pane img, .leaflet-rainReportRadar-pane img, [class*='rainReportRadar'] img"));
+    return new Promise(function (resolve) {
+      var pending = imgs.filter(function (i) { return !loaded(i); });
+      if (!pending.length) return resolve();
+      var done = false;
+      function finish() { if (!done) { done = true; resolve(); } }
+      var left = pending.length;
+      pending.forEach(function (img) {
+        function one() { if (--left <= 0) finish(); }
+        img.addEventListener("load", one, { once: true });
+        img.addEventListener("error", one, { once: true });
+      });
+      setTimeout(finish, ms || 2200);
+    });
+  }
+  window.__flattenRainRadarForMobile = function (root) {
+    if (!mobile() || !root) return Promise.resolve();
+    var mapEl = root.querySelector("#rain-report-map-tiles");
+    if (!mapEl || mapEl.getAttribute("data-report-flattened") === "1") return Promise.resolve();
+    var rect = mapEl.getBoundingClientRect();
+    var w = Math.round(rect.width), h = Math.round(rect.height);
+    if (!w || !h) return Promise.resolve();
+    return waitTileImages(mapEl, 2200).then(function () {
+      var scale = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+      var ctx = canvas.getContext("2d", { alpha: false });
+      ctx.fillStyle = "#dbeafe"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      function drawPane(selector, filter, opacity) {
+        var pane = mapEl.querySelector(selector);
+        if (!pane) return;
+        var imgs = Array.prototype.slice.call(pane.querySelectorAll("img"));
+        ctx.save();
+        ctx.globalAlpha = opacity == null ? 1 : opacity;
+        if (filter && "filter" in ctx) ctx.filter = filter;
+        imgs.forEach(function (img) {
+          if (!loaded(img)) return;
+          var r = img.getBoundingClientRect();
+          if (r.width <= 0 || r.height <= 0) return;
+          var x = (r.left - rect.left) * scale, y = (r.top - rect.top) * scale;
+          var dw = r.width * scale, dh = r.height * scale;
+          try { ctx.drawImage(img, x, y, dw, dh); } catch (e) {}
+        });
+        ctx.restore();
+      }
+      drawPane(".leaflet-tile-pane", null, 1);
+      drawPane(".leaflet-rainReportRadar-pane, [class*='rainReportRadar']", "contrast(1.35) saturate(1.45) brightness(1.08)", 0.92);
+      var flat;
+      try { flat = canvas.toDataURL("image/png"); } catch (e) { return; }
+      var img = document.createElement("img");
+      img.setAttribute("data-report-asset", "mapflat");
+      img.alt = ""; img.src = flat;
+      img.style.cssText = "position:absolute;left:0;top:0;width:" + w + "px;height:" + h + "px;z-index:1;display:block;pointer-events:none;";
+      mapEl.appendChild(img);
+      mapEl.querySelectorAll(".leaflet-pane").forEach(function (p) { p.style.visibility = "hidden"; });
+      mapEl.setAttribute("data-report-flattened", "1");
+      mapEl.style.opacity = "1";
+    });
+  };
+})();
 
   function waitLibs(cb, _tries) {
     _tries = _tries || 0;
@@ -13146,19 +13221,96 @@ var ReportKit = (function () {
     },
 
     initMetricTips: function () {
-      var isPhone = function () {
+      var activeTip = null, activeEl = null, outsideBound = false;
+      function isPhone() {
         try {
-          return window.matchMedia("(pointer: coarse)").matches ||
+          return window.matchMedia("(max-width: 900px)").matches ||
+            window.matchMedia("(pointer: coarse)").matches ||
             ("ontouchstart" in window && Math.min(screen.width, screen.height) < 900);
-        } catch (e) {
-          return "ontouchstart" in window;
+        } catch (e) { return "ontouchstart" in window; }
+      }
+      function viewport() {
+        var vv = window.visualViewport;
+        return { w: vv ? vv.width : window.innerWidth, h: vv ? vv.height : window.innerHeight, ox: vv ? vv.offsetLeft : 0, oy: vv ? vv.offsetTop : 0 };
+      }
+      function resetTip(tip) {
+        tip.classList.remove("show", "tip-fixed", "ux-tip-popover");
+        tip.style.left = ""; tip.style.top = ""; tip.style.right = ""; tip.style.bottom = "";
+        tip.style.transform = ""; tip.style.width = ""; tip.style.maxWidth = ""; tip.style.maxHeight = ""; tip.style.overflowY = "";
+      }
+      function hideTip(tip) {
+        if (!tip) return;
+        resetTip(tip);
+        var owner = tip.__uxOwner;
+        if (owner && tip.parentNode !== owner) owner.appendChild(tip);
+        if (activeTip === tip) { activeTip = null; activeEl = null; }
+      }
+      function hideAllTips() {
+        document.querySelectorAll(".metric-tip.show").forEach(hideTip);
+      }
+      function placeTip(tip, el) {
+        if (!isPhone()) {
+          tip.classList.remove("ux-tip-popover");
+          var owner = tip.__uxOwner;
+          if (owner && tip.parentNode !== owner) owner.appendChild(tip);
+          tip.classList.remove("tip-fixed");
+          var r = tip.getBoundingClientRect();
+          if (r.left < 12 || r.right > window.innerWidth - 12 || r.top < 12 || r.bottom > window.innerHeight - 12) {
+            tip.classList.add("tip-fixed");
+            var a = el.getBoundingClientRect();
+            var tw = Math.min(260, window.innerWidth - 24);
+            tip.style.width = tw + "px";
+            var th = tip.getBoundingClientRect().height || 80;
+            var left = a.left + a.width / 2 - tw / 2;
+            var top = a.top - th - 10;
+            if (top < 12) top = a.bottom + 10;
+            if (top + th > window.innerHeight - 12) top = Math.max(12, window.innerHeight - th - 12);
+            tip.style.left = Math.max(12, Math.min(left, window.innerWidth - tw - 12)) + "px";
+            tip.style.top = top + "px";
+          }
+          return;
         }
-      };
+        var v = viewport(), m = 12;
+        tip.classList.add("tip-fixed", "ux-tip-popover");
+        if (tip.parentNode !== document.body) { tip.__uxOwner = tip.__uxOwner || tip.parentNode; document.body.appendChild(tip); }
+        var width = Math.min(v.w < 420 ? v.w - 2 * m : 300, 320);
+        tip.style.width = Math.max(180, width) + "px";
+        tip.style.maxWidth = Math.max(180, v.w - 2 * m) + "px";
+        tip.style.maxHeight = Math.max(120, v.h - 2 * m) + "px";
+        tip.style.overflowY = "auto";
+        tip.style.left = v.ox + m + "px";
+        tip.style.top = v.oy + m + "px";
+        requestAnimationFrame(function () {
+          if (!tip.classList.contains("show")) return;
+          var tr = tip.getBoundingClientRect(), ar = el.getBoundingClientRect();
+          var x = Math.max(v.ox + m, Math.min(ar.left + ar.width / 2 - tr.width / 2, v.ox + v.w - tr.width - m));
+          var below = ar.bottom + 8, above = ar.top - tr.height - 8;
+          var y;
+          if (below + tr.height <= v.oy + v.h - m) y = below;
+          else if (above >= v.oy + m && above + tr.height <= v.oy + v.h - m) y = above;
+          else y = below;
+          y = Math.max(v.oy + m, Math.min(y, v.oy + v.h - tr.height - m));
+          tip.style.left = Math.round(x) + "px";
+          tip.style.top = Math.round(y) + "px";
+        });
+      }
+      function bindOutside() {
+        if (outsideBound) return;
+        outsideBound = true;
+        document.addEventListener("pointerdown", function (e) {
+          if (!activeTip) return;
+          if (activeTip.contains(e.target) || (activeEl && activeEl.contains(e.target))) return;
+          hideTip(activeTip);
+        }, true);
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape" && activeTip) hideTip(activeTip); });
+        window.addEventListener("resize", function () { if (activeTip && activeEl) placeTip(activeTip, activeEl); });
+        window.addEventListener("scroll", function () { if (activeTip && activeEl) placeTip(activeTip, activeEl); }, true);
+        if (window.visualViewport) window.visualViewport.addEventListener("resize", function () { if (activeTip && activeEl) placeTip(activeTip, activeEl); });
+      }
       document.querySelectorAll(".metric[data-tip], .aqi-item[data-tip], .layer-btn[data-tip], .leg-tip[data-tip]").forEach(function (el) {
         if (el._tipBound) return;
         el._tipBound = true;
-        var timer = null;
-        var hideTimer = null;
+        var timer = null, hideTimer = null, sticky = false, lastTap = 0;
         var delay = el.classList.contains("layer-btn") ? 3000 : (el.classList.contains("leg-tip") ? 500 : 2000);
         var tip = document.createElement("div");
         tip.className = "metric-tip";
@@ -13172,113 +13324,43 @@ var ReportKit = (function () {
         closeBtn.setAttribute("aria-label", "Cerrar");
         closeBtn.innerHTML = "×";
         tip.appendChild(closeBtn);
+        tip.__uxOwner = el;
         el.appendChild(tip);
-
-        function hideTip() {
-          clearTimeout(timer);
-          clearTimeout(hideTimer);
-          tip.classList.remove("show");
-          tip.classList.remove("tip-fixed");
-          tip.style.left = "";
-          tip.style.top = "";
-          tip.style.right = "";
-          tip.style.bottom = "";
-          tip.style.transform = "";
-        }
-        function placeTipInViewport() {
-          /* En teléfono: posición fija respetando bordes de pantalla. */
-          tip.classList.add("tip-fixed");
-          tip.style.left = "0";
-          tip.style.top = "0";
-          tip.style.right = "auto";
-          tip.style.bottom = "auto";
-          tip.style.transform = "none";
-          var margin = 12;
-          var elRect = el.getBoundingClientRect();
-          var tipRect = tip.getBoundingClientRect();
-          var tw = tipRect.width || Math.min(260, window.innerWidth - margin * 2);
-          var th = tipRect.height || 80;
-          var left = elRect.left + elRect.width / 2 - tw / 2;
-          var top = elRect.top - th - 10;
-          if (top < margin) top = elRect.bottom + 10;
-          if (top + th > window.innerHeight - margin) {
-            top = Math.max(margin, window.innerHeight - th - margin);
-          }
-          if (left < margin) left = margin;
-          if (left + tw > window.innerWidth - margin) {
-            left = Math.max(margin, window.innerWidth - tw - margin);
-          }
-          tip.style.left = Math.round(left) + "px";
-          tip.style.top = Math.round(top) + "px";
-        }
-        function showTip(sticky) {
-          clearTimeout(timer);
-          clearTimeout(hideTimer);
-          document.querySelectorAll(".metric-tip.show").forEach(function (other) {
-            if (other !== tip) {
-              other.classList.remove("show");
-              other.classList.remove("tip-fixed");
-              other.style.left = "";
-              other.style.top = "";
-            }
-          });
+        function showTip(force) {
+          clearTimeout(timer); clearTimeout(hideTimer);
+          hideAllTips();
+          sticky = !!force;
           tip.classList.add("show");
-          if (isPhone()) {
-            requestAnimationFrame(function () {
-              placeTipInViewport();
-            });
-          }
-          if (!sticky) {
-            hideTimer = setTimeout(hideTip, 5000);
-          }
+          activeTip = tip; activeEl = el;
+          if (isPhone()) { try { el.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (err) {} }
+          placeTip(tip, el);
+          bindOutside();
         }
-
+        function scheduleHide(ms) {
+          clearTimeout(hideTimer);
+          if (sticky) return;
+          hideTimer = setTimeout(function () { hideTip(tip); }, ms);
+        }
         closeBtn.addEventListener("click", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          hideTip();
+          e.preventDefault(); e.stopPropagation(); sticky = false; hideTip(tip);
         });
-        closeBtn.addEventListener("touchend", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          hideTip();
-        }, { passive: false });
-
-        /* Escritorio: mantener ratón el tiempo configurado */
         el.addEventListener("mouseenter", function () {
           if (isPhone()) return;
-          clearTimeout(timer);
+          clearTimeout(timer); clearTimeout(hideTimer);
           timer = setTimeout(function () { showTip(false); }, delay);
         });
-        el.addEventListener("mouseleave", function () {
-          if (isPhone()) return;
-          clearTimeout(timer);
-          if (!tip.classList.contains("show")) return;
-          /* En escritorio se oculta al salir; en móvil queda hasta la X */
-          hideTip();
-        });
-
-        /* Teléfono: doble toque muestra el mismo concepto, con X para cerrar */
-        var lastTap = 0;
-        el.addEventListener("touchend", function (e) {
+        el.addEventListener("mouseleave", function () { if (!isPhone()) scheduleHide(150); });
+        el.addEventListener("click", function (e) {
           if (!isPhone()) return;
-          if (e.target && (e.target === closeBtn || closeBtn.contains(e.target))) return;
           var now = Date.now();
-          if (now - lastTap < 380) {
-            e.preventDefault();
-            e.stopPropagation();
-            showTip(true);
-            lastTap = 0;
-          } else {
-            lastTap = now;
-          }
-        }, { passive: false });
-
+          var isMetric = el.classList.contains("metric") || el.classList.contains("aqi-item") || el.classList.contains("leg-tip");
+          if (isMetric) { e.stopPropagation(); showTip(true); lastTap = now; return; }
+          if (now - lastTap < 380) { e.preventDefault(); e.stopPropagation(); showTip(true); lastTap = 0; }
+          else { lastTap = now; }
+        });
         el.addEventListener("dblclick", function (e) {
           if (!isPhone()) return;
-          e.preventDefault();
-          e.stopPropagation();
-          showTip(true);
+          e.preventDefault(); e.stopPropagation(); showTip(true);
         });
       });
     },
@@ -15570,7 +15652,7 @@ var ReportKit = (function () {
         });
       }).then(function () {
         if (card && card.scrollHeight > STORY_H) card.style.height = card.scrollHeight + "px";
-        return flattenLeafletMapsInReport(card);
+        return window.__flattenRainRadarForMobile(card).then(function () { return flattenLeafletMapsInReport(card); });
       }).then(function () {
         return capture();
       }).then(exportWithFallback).catch(function (error) {
