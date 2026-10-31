@@ -481,7 +481,13 @@
             </div>
 
             <button class="btn-mapa" style="background:var(--v-lim); color:var(--v-osc); font-weight:bold; margin-top:5px;" onclick="window.print()">🖨️ EXPORTAR MAPA (PDF)</button>
-            <div style="height:50px;"></div>
+            <div style="border-top: 1px dashed var(--v-lim); margin-top: 18px; padding: 15px 15px 0;">
+    <a id="btn-modo-observatorio" href="observatorio.html" class="btn-acceder" style="display:flex; align-items:center; justify-content:center; gap:8px; background:#B4D445; color:#10160f; text-decoration:none; font-weight:800; margin-top:0;" title="Abrir el Observatorio Climático">
+        <span aria-hidden="true">🌦️</span> MODO OBSERVATORIO
+    </a>
+    <p style="font-size: 9px; color: #888; text-align: center; margin-top: 8px;">Clima, capas territoriales y dibujo con guardado por usuario.</p>
+</div>
+<div style="height:50px;"></div>
         </div>
 
         <div id="map-container">
@@ -1534,5 +1540,5 @@ map.on("popupopen",function(e){try{aplicar(e.popup&&e.popup._source,e.popup)}cat
 })();
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4c2676d98860838',t:'MTc5MjI3MjYyMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a52aa6e5da0f8d06',t:'MTc5MzM2NTc0MA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a52aa6e5da0f8d06',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
