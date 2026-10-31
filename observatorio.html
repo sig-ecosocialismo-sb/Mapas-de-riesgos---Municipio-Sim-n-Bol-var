@@ -2446,6 +2446,15 @@ body.ux-map-open { overflow: hidden; }
 #obs-app .ux-save-btn[data-state="pending"] .ux-save-dot { background: #f1c40f; }
 #obs-app .ux-save-btn[data-state="error"] .ux-save-dot { background: #e74c3c; }
 
+#obs-app .ux-map-email { display: block; margin-top: 4px; font-size: 11px; font-weight: 650; color: #B4D445; letter-spacing: .01em; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#obs-app.ux-map-expanded .ux-map-email { max-width: 60vw; }
+@media (max-width: 700px) { #obs-app .ux-map-email { max-width: 46vw; font-size: 10px; } }
+
+#obs-app .ux-back-sigp { color: #B4D445; border-color: #3a4a42; text-decoration: none; }
+#obs-app .ux-back-sigp:hover { border-color: #B4D445; background: rgba(180,212,69,.12); }
+#obs-app .ux-back-sigp-link { display: inline-flex; align-items: center; gap: 6px; justify-content: center; min-height: 38px; border-radius: 9px; border: 1px solid #3a4a42; background: #111714; color: #B4D445; font-weight: 650; text-decoration: none; font-size: 13px; }
+#obs-app .ux-back-sigp-link:hover { border-color: #B4D445; background: rgba(180,212,69,.12); }
+
 #obs-save-disclosure .ux-disclosure-body { display: grid; gap: 10px; }
 #obs-save-summary { margin: 0; font-size: 12px; line-height: 1.5; color: #c4d2cb; }
 #obs-save-disclosure button { width: 100%; min-height: 38px; border-radius: 9px; border: 1px solid #3a4a42; background: #111714; color: #e8f0eb; font-weight: 650; cursor: pointer; }
@@ -17071,51 +17080,47 @@ var ReportKit = (function () {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script id="obs-persistence-script">
-/* Guardado por usuario del Observatorio Climático.
-   Tabla propia en Supabase (observatorio_escenas). No lee ni escribe mapas_comunales.
+/* Guardado del Observatorio Climático por CORREO, igual que los mapas del SIGP.
+   El usuario entra con su correo y su mapa (chinchas, flechas, polígonos,
+   indicadores, capas, zoom) se carga y se guarda solo en Supabase.
+   Tabla propia: observatorio_mapas. No lee ni escribe mapas_comunales.
    Los reportes no se modifican. */
 (function () {
   'use strict';
 
   var SUPABASE_URL = 'https://zezcmftcbbzplhtdqotd.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_bNaRcykfZaVdW67HsEf3Tw_rWemQCui';
-  var TABLE = 'observatorio_escenas';
+  var COMMUNAL_TABLE = 'mapas_comunales';
+  var OBS_BLOCK = 'observatorio_climatico';
+  var AUTOSAVE_MS = 30000;
   var SCENE_PREFIX = 'obs_climatico_scene_v2:';
   var META_PREFIX = 'obs_climatico_scene_meta_v2:';
-  var AUTH_STORAGE = 'sigp-observatorio-auth';
+  var EMAIL_KEY = 'user_email_active';
 
   var core = window.__obsCore;
-  var client = null, session = null, uid = null;
-  var bootEmail = null;
-  var started = false, restoring = false, settling = false, saveTimer = null, cloudTimer = null, settleTimer = null;
+  var client = null;
+  var activeEmail = '';
+  var started = false, restoring = false, settling = false;
+  var saveTimer = null, cloudTimer = null, settleTimer = null, autosaveInterval = null;
+  var rowId = null;
   var lastCloudAt = null, dirty = false, conflictRemote = null;
-  var localOk = true, cloudState = 'local';
-  var dialog, emailInput, statusBox, cloudBox, localBox, conflictBox, saveBtn, summary;
+  var cloudState = 'local';
+  var dialog, statusBox, accountBox, localBox, conflictBox, saveBtn, summary;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { var e = document.createElement('span'); e.textContent = String(s == null ? '' : s); return e.innerHTML; }
   function nowISO() { return new Date().toISOString(); }
-  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { localOk = false; return null; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { localOk = false; return false; } }
-  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function normEmail(v) { return String(v || '').trim().toLowerCase(); }
+  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
 
-  function sigpEmail() {
-    var e = lsGet('user_email_active') || '';
-    return String(e).trim().toLowerCase();
-  }
-  function identityKey() {
-    if (uid) return 'uid:' + uid;
-    // Se fija al abrir el observatorio. Cambiar el correo del SIGP en otra
-    // pestaña no debe mover la escena actual a otra cuenta antes de recargar.
-    var e = bootEmail != null ? bootEmail : sigpEmail();
-    return e ? 'email:' + e : 'guest';
-  }
+  function readStoredEmail() { return normEmail(lsGet(EMAIL_KEY)); }
+  function identityKey() { return activeEmail ? 'email:' + activeEmail : 'guest'; }
   function sceneKey() { return SCENE_PREFIX + identityKey(); }
   function metaKey() { return META_PREFIX + identityKey(); }
 
-  function readMeta() {
-    try { return JSON.parse(lsGet(metaKey()) || '{}') || {}; } catch (e) { return {}; }
-  }
+  function readMeta() { try { return JSON.parse(lsGet(metaKey()) || '{}') || {}; } catch (e) { return {}; } }
   function writeMeta(patch) {
     var m = readMeta();
     Object.keys(patch || {}).forEach(function (k) { m[k] = patch[k]; });
@@ -17144,9 +17149,8 @@ var ReportKit = (function () {
 
   function fmtTime(iso) {
     if (!iso) return 'sin guardar todavía';
-    try {
-      return new Intl.DateTimeFormat('es-VE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso));
-    } catch (e) { return String(iso); }
+    try { return new Intl.DateTimeFormat('es-VE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)); }
+    catch (e) { return String(iso); }
   }
 
   /* ---------- Captura de escena ---------- */
@@ -17174,19 +17178,13 @@ var ReportKit = (function () {
     var center = map.getCenter();
     var items = [];
     if (D && D.items) {
-      D.items.forEach(function (it) {
-        try { items.push(D.snapshotItem(it)); } catch (e) {}
-      });
+      D.items.forEach(function (it) { try { items.push(D.snapshotItem(it)); } catch (e) {} });
     }
     var dashBtn = document.querySelector('#tool-dash-style .dash-style-btn.active');
     return {
       version: 2,
       updatedAt: nowISO(),
-      map: {
-        center: [center.lat, center.lng],
-        zoom: map.getZoom(),
-        base: M.satMode ? 'sat' : 'street'
-      },
+      map: { center: [center.lat, center.lng], zoom: map.getZoom(), base: M.satMode ? 'sat' : 'street' },
       drawings: { nextId: D ? D.nextId : 1, items: items },
       layers: captureLayers(),
       lineStyles: {
@@ -17219,8 +17217,7 @@ var ReportKit = (function () {
     try { return validateScene(JSON.parse(raw)); } catch (e) { return null; }
   }
   function writeLocal(scene) {
-    var ok = lsSet(sceneKey(), JSON.stringify(scene));
-    if (!ok) {
+    if (!lsSet(sceneKey(), JSON.stringify(scene))) {
       setState('error', 'No se pudo guardar en este navegador. Revisa el espacio o el modo privado.');
       return false;
     }
@@ -17264,24 +17261,15 @@ var ReportKit = (function () {
         if (Object.prototype.hasOwnProperty.call(M.activeParishes, cb.value)) cb.checked = !!M.activeParishes[cb.value];
       });
     }
-    if (data.cloudColor) {
-      M.cloudColor = data.cloudColor;
-      var cc = $('cloud-color'); if (cc) cc.value = data.cloudColor;
-    }
-    if (data.cloudOpacity != null) {
-      M.cloudOpacity = Number(data.cloudOpacity);
-      var co = $('cloud-opacity'); if (co) co.value = Math.round(M.cloudOpacity * 100);
-    }
+    if (data.cloudColor) { M.cloudColor = data.cloudColor; var cc = $('cloud-color'); if (cc) cc.value = data.cloudColor; }
+    if (data.cloudOpacity != null) { M.cloudOpacity = Number(data.cloudOpacity); var co = $('cloud-opacity'); if (co) co.value = Math.round(M.cloudOpacity * 100); }
     if (data.seaTempOpacity != null) {
       M.seaTempOpacity = Math.max(0.2, Math.min(1, Number(data.seaTempOpacity)));
       var so = $('sea-temp-opacity'), sv = $('sea-temp-opacity-val');
       if (so) so.value = Math.round(M.seaTempOpacity * 100);
       if (sv) sv.textContent = Math.round(M.seaTempOpacity * 100) + '%';
     }
-    if (data.windColor) {
-      M.windColor = data.windColor;
-      var wpc = $('wind-particle-color'); if (wpc) wpc.value = data.windColor;
-    }
+    if (data.windColor) { M.windColor = data.windColor; var wpc = $('wind-particle-color'); if (wpc) wpc.value = data.windColor; }
     M.handMode = !!data.handMode;
     document.body.classList.toggle('map-hand-mode', M.handMode);
     var hb = $('mtb-hand'); if (hb) hb.classList.toggle('active', M.handMode);
@@ -17347,8 +17335,6 @@ var ReportKit = (function () {
       applyBase(scene.map.base);
       try { core.MapCtrl.map.stop(); } catch (eStop) {}
       core.MapCtrl.map.setView(scene.map.center, scene.map.zoom, { animate: false });
-      // El layout original hace varios invalidateSize al arrancar. Reasentamos
-      // la vista guardada sin guardar encima los ajustes automáticos de tamaño.
       settling = true;
       clearTimeout(settleTimer);
       [180, 650, 1200].forEach(function (ms) {
@@ -17368,6 +17354,14 @@ var ReportKit = (function () {
     }
   }
 
+  function clearMapScene() {
+    restoring = true;
+    try {
+      var D = window.__DrawTools;
+      if (D) { D.clearAll(); D.undoStack = []; D.redoStack = []; D.updateLegend(); }
+    } finally { restoring = false; }
+  }
+
   /* ---------- Guardado local ---------- */
   function saveLocal(reason) {
     if (restoring || settling || !started) return null;
@@ -17375,11 +17369,13 @@ var ReportKit = (function () {
     if (!writeLocal(scene)) return null;
     dirty = true;
     writeMeta({ dirty: true, localAt: scene.updatedAt, reason: reason || 'change' });
-    if (uid && client) {
-      setState('pending', 'Cambio guardado en este navegador. Pendiente de sincronizar con la nube.');
+    if (activeEmail && client) {
+      setState('pending', 'Guardando cambios de ' + activeEmail + '…');
       scheduleCloud();
+    } else if (activeEmail) {
+      setState('local', 'Guardado en este navegador para ' + activeEmail + '.');
     } else {
-      setState('local', 'Guardado en este navegador' + (sigpEmail() ? ' para ' + sigpEmail() : '') + '. Conecta la nube para usarlo en otro dispositivo.');
+      setState('local', 'Guardado en este navegador. Escribe tu correo para guardarlo en la nube.');
     }
     return scene;
   }
@@ -17395,42 +17391,13 @@ var ReportKit = (function () {
     return saveLocal('flush');
   }
 
-  /* ---------- Supabase ---------- */
+  /* ---------- Supabase (por correo, sin enlace mágico) ---------- */
   function initClient() {
     if (client || !window.supabase || !window.supabase.createClient) return false;
     try {
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storageKey: AUTH_STORAGE
-        }
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
       });
-      client.auth.onAuthStateChange(function (event, newSession) {
-        var newUid = newSession && newSession.user ? newSession.user.id : null;
-        if (newUid === uid && event !== 'SIGNED_OUT') { session = newSession; return; }
-        session = newSession || null;
-        uid = newUid;
-        conflictRemote = null;
-        if (event === 'SIGNED_OUT') {
-          lastCloudAt = null; dirty = false;
-          setState('local', 'Sesión de nube cerrada. El mapa queda guardado solo en este navegador.');
-          renderDialog();
-          loadForIdentity();
-          return;
-        }
-        if (uid) {
-          renderDialog();
-          loadForIdentity(true);
-        }
-      });
-      client.auth.getSession().then(function (res) {
-        session = res && res.data ? res.data.session : null;
-        uid = session && session.user ? session.user.id : null;
-        renderDialog();
-        if (uid) loadForIdentity(true);
-      }).catch(function () {});
       return true;
     } catch (e) {
       console.warn('Supabase no disponible; se mantiene guardado local.', e);
@@ -17439,8 +17406,11 @@ var ReportKit = (function () {
     }
   }
 
-  function remoteQuery() {
-    return client.from(TABLE).select('escena,actualizado_en').eq('user_id', uid).maybeSingle();
+  function remoteLoad() {
+    return client.rpc('observatorio_cargar_de_mapa', { p_correo: activeEmail }).then(function (res) {
+      if (res.error) throw res.error;
+      return res.data || { ok: false, reason: 'respuesta_vacia' };
+    });
   }
 
   function ensureDefaultView() {
@@ -17448,47 +17418,43 @@ var ReportKit = (function () {
     try { core.MapCtrl.showMunicipioSimonBolivar(); } catch (e) {}
   }
 
-  function adoptLocalForUser() {
-    if (!uid || !session || !session.user || readLocal()) return;
-    var email = String(session.user.email || '').trim().toLowerCase();
-    var candidates = [];
-    if (email) candidates.push(SCENE_PREFIX + 'email:' + email);
-    if (bootEmail && bootEmail !== email) candidates.push(SCENE_PREFIX + 'email:' + bootEmail);
-    for (var i = 0; i < candidates.length; i++) {
-      var raw = lsGet(candidates[i]);
-      if (!raw) continue;
-      try {
-        var scene = validateScene(JSON.parse(raw));
-        if (scene) {
-          writeLocal(scene);
-          writeMeta({ dirty: true, localAt: scene.updatedAt, adoptedFrom: candidates[i] });
-          return;
-        }
-      } catch (e) {}
-    }
-  }
-
-  function loadForIdentity(preferCloud) {
-    adoptLocalForUser();
+  function loadForEmail() {
     var meta = readMeta();
     lastCloudAt = meta.lastCloudAt || null;
     dirty = !!meta.dirty;
     var local = readLocal();
-    if (!uid || !client) {
-      if (local) restoreScene(local);
-      else ensureDefaultView();
-      setState('local', local
-        ? 'Último guardado local: ' + fmtTime(local.updatedAt) + '. Conecta la nube para sincronizar.'
-        : 'Aún no hay un mapa guardado para este usuario en este navegador.');
+
+    if (!activeEmail) {
+      if (local) restoreScene(local); else ensureDefaultView();
+      setState('local', 'Escribe el correo del SIGP para cargar y guardar tu mapa en la misma fila.');
       renderDialog();
       return;
     }
-    setState('pending', 'Buscando tu mapa en la nube…');
-    remoteQuery().then(function (res) {
-      if (res.error) throw res.error;
-      var row = res.data;
-      var remote = row ? validateScene(row.escena) : null;
-      var remoteAt = row ? row.actualizado_en : null;
+    if (!client) {
+      if (local) restoreScene(local); else ensureDefaultView();
+      setState('local', 'Mapa de ' + activeEmail + ' guardado en este navegador. Sin conexión a la nube por ahora.');
+      renderDialog();
+      return;
+    }
+
+    // Respuesta inmediata con la copia local mientras llega la nube.
+    if (local) restoreScene(local);
+    setState('pending', 'Cargando el mapa de ' + activeEmail + '…');
+    renderDialog();
+
+    remoteLoad().then(function (res) {
+      if (res && res.ok === false && res.reason === 'sin_mapa') {
+        rowId = null;
+        if (local) restoreScene(local); else ensureDefaultView();
+        setState('pending', 'El correo ' + activeEmail + ' aún no tiene fila en mapas_comunales. Se guardará localmente y se creará la fila al guardar en la nube.');
+        renderDialog();
+        return;
+      }
+      if (!res || res.ok !== true) throw new Error((res && res.reason) || 'No se pudo cargar el mapa comunal');
+      rowId = res.id || null;
+      var remote = res.escena ? validateScene(res.escena) : null;
+      var remoteAt = res.actualizado_en || (remote && remote.updatedAt) || null;
+
       if (remote && remoteAt && lastCloudAt && remoteAt > lastCloudAt && dirty && local) {
         conflictRemote = { scene: remote, at: remoteAt };
         setState('pending', 'Hay cambios en la nube y en este dispositivo. Elige cuál conservar.');
@@ -17502,24 +17468,25 @@ var ReportKit = (function () {
         lastCloudAt = remoteAt;
         dirty = false;
         writeMeta({ lastCloudAt: lastCloudAt, dirty: false, localAt: remote.updatedAt });
-        setState('cloud', 'Mapa sincronizado con la nube. Última actualización: ' + fmtTime(remoteAt || remote.updatedAt) + '.');
+        setState('cloud', 'Mapa de ' + activeEmail + ' cargado. Última actualización: ' + fmtTime(remoteAt || remote.updatedAt) + '.');
       } else if (local) {
         restoreScene(local);
-        setState('pending', 'Hay cambios locales pendientes de subir a la nube.');
+        setState('pending', 'Subiendo los cambios de ' + activeEmail + ' a la nube…');
         scheduleCloud();
       } else {
+        clearMapScene();
         ensureDefaultView();
-        setState('cloud', 'Conectado a la nube. Aún no hay un mapa guardado; dibuja y pulsa Guardar.');
+        setState('cloud', 'Correo ' + activeEmail + ' listo. Dibuja en el mapa y se guardará solo.');
       }
       renderDialog();
     }).catch(function (err) {
-      console.warn('No se pudo leer la escena en Supabase', err);
-      if (local) restoreScene(local);
+      console.warn('No se pudo leer el mapa en Supabase', err);
+      if (local) restoreScene(local); else ensureDefaultView();
       var msg = String(err && err.message || err || '');
       if (/relation|does not exist|schema cache|PGRST205|42P01/i.test(msg)) {
-        setState('error', 'Falta crear la tabla observatorio_escenas en Supabase. Ejecuta el SQL incluido.');
-      } else if (/JWT|auth|session/i.test(msg)) {
-        setState('error', 'La sesión de nube expiró. Vuelve a conectar tu correo.');
+        setState('error', 'Falta ejecutar el SQL del observatorio en mapas_comunales. Ejecuta el SQL incluido.');
+      } else if (/row-level security|RLS|42501|permission denied/i.test(msg)) {
+        setState('error', 'Supabase rechazó el acceso. Revisa las políticas del SQL incluido.');
       } else {
         setState('error', 'No se pudo leer la nube. Se mantiene la copia local de este navegador.');
       }
@@ -17529,49 +17496,61 @@ var ReportKit = (function () {
 
   function scheduleCloud() {
     clearTimeout(cloudTimer);
-    if (!uid || !client || conflictRemote) return;
-    cloudTimer = setTimeout(function () { saveCloud(true); }, 6000);
+    if (!activeEmail || !client || conflictRemote) return;
+    cloudTimer = setTimeout(function () { saveCloud(true); }, AUTOSAVE_MS);
   }
 
   function saveCloud(silent) {
-    if (!uid || !client) { openDialog(); return Promise.resolve(false); }
+    if (!activeEmail) { openDialog(); return Promise.resolve(false); }
+    if (!client) {
+      setState('local', 'Sin conexión a la nube. El mapa de ' + activeEmail + ' quedó guardado en este navegador.');
+      if (!silent) toast('Sin conexión a la nube. Guardado localmente.');
+      return Promise.resolve(false);
+    }
     if (conflictRemote) { openDialog(); return Promise.resolve(false); }
     var scene = flushLocal() || captureScene();
-    setState('pending', 'Guardando en la nube…');
-    return remoteQuery().then(function (res) {
-      if (res.error) throw res.error;
-      var row = res.data;
-      if (row && row.actualizado_en && lastCloudAt && row.actualizado_en > lastCloudAt && dirty) {
-        conflictRemote = { scene: validateScene(row.escena), at: row.actualizado_en };
-        setState('pending', 'Otro dispositivo guardó cambios. Elige cuál versión conservar.');
-        renderDialog();
-        if (!silent) openDialog();
-        return false;
+    setState('pending', 'Guardando el mapa de ' + activeEmail + '…');
+    return remoteLoad().then(function (res) {
+      if (res && res.ok === true) {
+        rowId = res.id || rowId;
+        var remoteScene = res.escena ? validateScene(res.escena) : null;
+        var remoteAt = res.actualizado_en || (remoteScene && remoteScene.updatedAt) || null;
+        if (remoteScene && remoteAt && lastCloudAt && remoteAt > lastCloudAt && dirty) {
+          conflictRemote = { scene: remoteScene, at: remoteAt };
+          setState('pending', 'Otro dispositivo guardó cambios. Elige cuál versión conservar.');
+          renderDialog();
+          if (!silent) openDialog();
+          return false;
+        }
       }
-      return client.from(TABLE).upsert({
-        user_id: uid,
-        escena: scene,
-        actualizado_en: scene.updatedAt
-      }, { onConflict: 'user_id' }).select('actualizado_en').single();
+      return client.rpc('observatorio_guardar_en_mapa', { p_correo: activeEmail, p_escena: scene });
     }).then(function (res) {
       if (res === false) return false;
       if (res && res.error) throw res.error;
-      lastCloudAt = res && res.data ? res.data.actualizado_en : scene.updatedAt;
+      var data = res && res.data ? res.data : null;
+      if (data && data.ok === false) {
+        if (data.reason === 'sin_mapa') {
+          setState('pending', 'No se encontró la fila del correo en mapas_comunales. Guarda primero el mapa en el SIGP o revisa el correo.');
+          renderDialog();
+          return false;
+        }
+        throw new Error(data.reason || 'No se pudo guardar en mapas_comunales');
+      }
+      rowId = data && data.id ? data.id : rowId;
+      lastCloudAt = data && data.actualizado_en ? data.actualizado_en : scene.updatedAt;
       dirty = false;
       writeMeta({ lastCloudAt: lastCloudAt, dirty: false, localAt: scene.updatedAt });
-      setState('cloud', 'Mapa guardado en la nube y en este navegador. ' + fmtTime(lastCloudAt) + '.');
+      setState('cloud', 'Mapa de ' + activeEmail + ' guardado en mapas_comunales.geometria_mapa. ' + fmtTime(lastCloudAt) + '.');
       renderDialog();
-      if (!silent) toast('Mapa guardado en la nube. Puedes volver a entrar desde otro dispositivo.');
+      if (!silent) toast('Mapa guardado en la misma fila del SIGP. Autoguardado cada 30 segundos.');
       return true;
     }).catch(function (err) {
       console.warn('Error al guardar en Supabase', err);
       var msg = String(err && err.message || err || '');
       if (/relation|does not exist|schema cache|PGRST205|42P01/i.test(msg)) {
-        setState('error', 'Falta ejecutar el SQL de Supabase. El mapa quedó guardado localmente.');
-      } else if (/row-level security|RLS|42501/i.test(msg)) {
-        setState('error', 'Supabase rechazó el guardado por permisos. Revisa las políticas RLS del SQL.');
-      } else if (/JWT|auth|session/i.test(msg)) {
-        setState('error', 'Sesión expirada. Conecta tu correo otra vez; la copia local sigue disponible.');
+        setState('error', 'Falta ejecutar el SQL del observatorio en mapas_comunales. El mapa quedó guardado localmente.');
+      } else if (/row-level security|RLS|42501|permission denied/i.test(msg)) {
+        setState('error', 'Supabase rechazó el guardado. Revisa las políticas del SQL incluido.');
       } else {
         setState('error', 'No se pudo sincronizar con la nube. El mapa quedó guardado en este navegador.');
       }
@@ -17581,40 +17560,23 @@ var ReportKit = (function () {
     });
   }
 
-  function sendMagicLink() {
-    if (!client) {
-      showStatus('error', 'No se cargó Supabase. Revisa la conexión y vuelve a intentar. Mientras tanto, el guardado local sigue activo.');
+  function changeEmail() {
+    var input = $('osd-email');
+    var email = normEmail(input ? input.value : '');
+    if (!validEmail(email)) {
+      showStatus('warn', 'Escribe un correo válido para cargar y guardar tu mapa.');
+      if (input) input.focus();
       return;
     }
-    var email = (emailInput.value || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      showStatus('warn', 'Escribe un correo válido.');
-      emailInput.focus();
-      return;
-    }
-    var btn = $('osd-send-link');
-    btn.disabled = true;
-    showStatus('ok', 'Enviando enlace de acceso…');
-    var redirectTo = window.location.href.split('#')[0];
-    client.auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: true }
-    }).then(function (res) {
-      if (res.error) throw res.error;
-      showStatus('ok', 'Enlace enviado a ' + email + '. Ábrelo en este mismo navegador para conectar la nube. Si no llega, revisa spam y la configuración de Auth en Supabase.');
-    }).catch(function (err) {
-      showStatus('error', 'No se pudo enviar el enlace: ' + String(err && err.message || err || 'error de Auth') + '. Verifica que Email Auth esté habilitado y que la URL de GitHub Pages esté en Redirect URLs.');
-    }).finally(function () { btn.disabled = false; });
-  }
-
-  function signOutCloud() {
-    if (!client) return;
-    client.auth.signOut().then(function () {
-      session = null; uid = null; lastCloudAt = null; conflictRemote = null;
-      renderDialog();
-      loadForIdentity();
-      toast('Saliste de la nube. El guardado local continúa activo.');
-    });
+    // Conserva lo actual antes de cambiar de correo.
+    flushLocal();
+    activeEmail = email;
+    lsSet(EMAIL_KEY, email);
+    conflictRemote = null;
+    lastCloudAt = null;
+    dirty = false;
+    showStatus('ok', 'Cargando el mapa de ' + email + '…');
+    loadForEmail();
   }
 
   function resolveConflict(useRemote) {
@@ -17626,15 +17588,17 @@ var ReportKit = (function () {
       dirty = false;
       writeMeta({ lastCloudAt: lastCloudAt, dirty: false, localAt: conflictRemote.scene.updatedAt });
       setState('cloud', 'Se cargó la versión de la nube.');
+      conflictRemote = null;
+      renderDialog();
     } else {
       lastCloudAt = conflictRemote.at;
       dirty = true;
       writeMeta({ lastCloudAt: lastCloudAt, dirty: true });
+      conflictRemote = null;
       setState('pending', 'Se conservará la versión de este dispositivo.');
+      renderDialog();
       saveCloud(false);
     }
-    conflictRemote = null;
-    renderDialog();
   }
 
   /* ---------- UI ---------- */
@@ -17648,6 +17612,27 @@ var ReportKit = (function () {
   function buildUI() {
     var actions = document.querySelector('.ux-map-actions');
     var expand = $('ux-expand-map');
+    var loc = $('location-label');
+    if (loc && !$('ux-map-email')) {
+      var badge = document.createElement('span');
+      badge.id = 'ux-map-email';
+      badge.className = 'ux-map-email';
+      badge.setAttribute('title', 'Correo con el que entraste al SIGP');
+      loc.insertAdjacentElement('afterend', badge);
+    }
+
+    // Botón Volver al SIGP (primero del grupo).
+    if (actions && !$('ux-back-sigp')) {
+      var back = document.createElement('a');
+      back.id = 'ux-back-sigp';
+      back.className = 'ux-action ux-action-icon ux-back-sigp';
+      back.href = 'index.html';
+      back.title = 'Volver al SIGP';
+      back.setAttribute('aria-label', 'Volver al SIGP');
+      back.innerHTML = '<svg class="ux-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
+      actions.insertBefore(back, actions.firstChild);
+    }
+
     if (actions && !$('ux-save-map')) {
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -17661,7 +17646,8 @@ var ReportKit = (function () {
       saveBtn = btn;
       btn.onclick = function () {
         flushLocal();
-        if (uid && client) saveCloud(false);
+        if (activeEmail && client) saveCloud(false);
+        else if (activeEmail) { setState('local', 'Mapa de ' + activeEmail + ' guardado en este navegador.'); toast('Guardado en este navegador. Sin nube por ahora.'); }
         else openDialog();
       };
     }
@@ -17672,17 +17658,18 @@ var ReportKit = (function () {
       var det = document.createElement('details');
       det.id = 'obs-save-disclosure';
       det.className = 'ux-disclosure';
-      det.innerHTML = '<summary>Guardado del mapa</summary><div class="ux-disclosure-body">' +
+      det.innerHTML = '<summary>Mi mapa guardado</summary><div class="ux-disclosure-body">' +
         '<p id="obs-save-summary">Preparando guardado…</p>' +
         '<button type="button" id="obs-save-now">Guardar mapa ahora</button>' +
-        '<button type="button" id="obs-save-open">Nube y cuenta</button>' +
-        '<p class="ux-sidebar-copy">Confirma los trazos con ✓ antes de guardar. Se conservan dibujos, zoom, ubicación, capas y estilos.</p>' +
+        '<button type="button" id="obs-save-open">Correo y cuenta</button>' +
+        '<a id="obs-back-sigp" class="ux-back-sigp-link" href="index.html">← Volver al SIGP</a>' +
+        '<p class="ux-sidebar-copy">Mismo correo y misma fila del SIGP. Tus dibujos del observatorio se guardan en geometria_mapa cada 30 segundos. Confirma los trazos con ✓.</p>' +
         '</div>';
       if (reset) sb.insertBefore(det, reset); else sb.append(det);
       summary = $('obs-save-summary');
       $('obs-save-now').onclick = function () {
         flushLocal();
-        if (uid && client) saveCloud(false); else openDialog();
+        if (activeEmail && client) saveCloud(false); else openDialog();
       };
       $('obs-save-open').onclick = openDialog;
     }
@@ -17692,27 +17679,28 @@ var ReportKit = (function () {
       dialog.id = 'obs-save-dialog';
       dialog.setAttribute('aria-labelledby', 'osd-title');
       dialog.innerHTML =
-        '<div class="osd-head"><h2 id="osd-title">Guardar mapa</h2><button type="button" class="osd-close" id="osd-close" aria-label="Cerrar">×</button></div>' +
+        '<div class="osd-head"><h2 id="osd-title">Mi mapa</h2><button type="button" class="osd-close" id="osd-close" aria-label="Cerrar">×</button></div>' +
         '<div class="osd-body">' +
           '<p class="osd-status" id="osd-status" hidden></p>' +
-          '<section class="osd-card" id="osd-local-card"><h3>Este navegador</h3><p id="osd-local-text">Guardado local automático.</p></section>' +
-          '<section class="osd-card" id="osd-cloud-card"><h3>Nube por usuario</h3><div id="osd-cloud-body"></div></section>' +
+          '<section class="osd-card"><h3>Correo del mapa</h3><div id="osd-account"></div></section>' +
+          '<section class="osd-card"><h3>Este navegador</h3><p id="osd-local-text">Guardado local automático.</p></section>' +
           '<section class="osd-card osd-conflict" id="osd-conflict" hidden><h3>Conflicto de versiones</h3><p>Hay cambios en la nube y en este dispositivo. Elige cuál conservar.</p><div class="osd-actions"><button type="button" class="osd-btn" id="osd-use-remote">Usar la nube</button><button type="button" class="osd-btn primary" id="osd-use-local">Usar este dispositivo</button></div></section>' +
-          '<p class="osd-note">La nube usa una tabla propia del observatorio. No modifica los mapas comunales del SIGP. Para otro dispositivo, conecta el mismo correo.</p>' +
+          '<p class="osd-note">Se guarda en la misma fila de mapas_comunales del correo que usaste en el SIGP, dentro de geometria_mapa. Autoguardado cada 30 segundos. Tus dibujos del SIGP y del observatorio se conservan por separado.</p>' +
           '<div class="osd-actions"><button type="button" class="osd-btn primary" id="osd-save">Guardar ahora</button><button type="button" class="osd-btn" id="osd-done">Cerrar</button></div>' +
         '</div>';
       var app = $('obs-app') || document.body;
       app.append(dialog);
       statusBox = $('osd-status');
       localBox = $('osd-local-text');
-      cloudBox = $('osd-cloud-body');
+      accountBox = $('osd-account');
       conflictBox = $('osd-conflict');
       $('osd-close').onclick = closeDialog;
       $('osd-done').onclick = closeDialog;
       $('osd-save').onclick = function () {
         flushLocal();
-        if (uid && client) saveCloud(false);
-        else showStatus('warn', 'Primero conecta tu correo para guardar en la nube. El guardado local ya está activo.');
+        if (activeEmail && client) saveCloud(false);
+        else if (activeEmail) showStatus('warn', 'Sin conexión a la nube por ahora. Tu mapa quedó guardado en este navegador.');
+        else showStatus('warn', 'Primero escribe tu correo para guardar el mapa en la nube.');
       };
       $('osd-use-remote').onclick = function () { resolveConflict(true); };
       $('osd-use-local').onclick = function () { resolveConflict(false); };
@@ -17724,40 +17712,58 @@ var ReportKit = (function () {
       });
     } else {
       dialog = $('obs-save-dialog');
-      statusBox = $('osd-status'); localBox = $('osd-local-text'); cloudBox = $('osd-cloud-body'); conflictBox = $('osd-conflict');
+      statusBox = $('osd-status'); localBox = $('osd-local-text'); accountBox = $('osd-account'); conflictBox = $('osd-conflict');
     }
     renderDialog();
   }
 
+  function renderEmailBadge() {
+    var badge = $('ux-map-email');
+    if (!badge) return;
+    if (activeEmail) {
+      badge.textContent = 'Correo: ' + activeEmail;
+      badge.hidden = false;
+    } else {
+      badge.textContent = 'Sin correo del SIGP';
+      badge.hidden = false;
+    }
+  }
+
   function renderDialog() {
+    renderEmailBadge();
     if (!dialog) return;
     var local = readLocal();
     if (localBox) {
       localBox.textContent = local
         ? 'Copia local: ' + fmtTime(local.updatedAt) + '. Dibujos: ' + local.drawings.items.length + '.'
-        : 'Todavía no hay copia local. Dibuja o activa capas y pulsa Guardar.';
+        : 'Todavía no hay copia local. Dibuja en el mapa y se guarda solo.';
     }
     if (conflictBox) conflictBox.hidden = !conflictRemote;
-    if (!cloudBox) return;
-    if (uid && session) {
-      var email = session.user && session.user.email || '';
-      cloudBox.innerHTML =
-        '<p>Conectado como <strong>' + esc(email) + '</strong>.</p>' +
-        '<p class="osd-note">' + (lastCloudAt ? 'Última sincronización: ' + fmtTime(lastCloudAt) + '.' : 'Aún no has subido un mapa a la nube.') + '</p>' +
-        '<div class="osd-actions" style="margin-top:10px"><button type="button" class="osd-btn" id="osd-refresh-cloud">Cargar desde la nube</button><button type="button" class="osd-btn danger" id="osd-signout">Cerrar sesión de nube</button></div>';
-      $('osd-refresh-cloud').onclick = function () { conflictRemote = null; loadForIdentity(true); };
-      $('osd-signout').onclick = signOutCloud;
+    if (!accountBox) return;
+
+    if (activeEmail) {
+      accountBox.innerHTML =
+        '<p>Mapa de <strong>' + esc(activeEmail) + '</strong>.</p>' +
+        '<p class="osd-note">' + (cloudState === 'cloud' && lastCloudAt ? 'Guardado en la nube: ' + fmtTime(lastCloudAt) + '.' : 'Autoguardado en mapas_comunales.geometria_mapa cada 30 segundos.') + '</p>' +
+        '<div class="osd-actions" style="margin-top:10px"><button type="button" class="osd-btn" id="osd-reload">Recargar mi mapa</button><button type="button" class="osd-btn" id="osd-change">Usar otro correo</button></div>';
+      $('osd-reload').onclick = function () { conflictRemote = null; loadForEmail(); };
+      $('osd-change').onclick = function () { renderEmailForm(); };
     } else {
-      var prefill = sigpEmail();
-      cloudBox.innerHTML =
-        '<p>Conecta tu correo para recuperar el mapa en otro dispositivo. Te enviaremos un enlace de acceso; no se comparte con otros usuarios.</p>' +
-        '<label for="osd-email">Correo</label><input id="osd-email" type="email" autocomplete="email" placeholder="tu@correo.com" value="' + esc(prefill) + '" />' +
-        '<div class="osd-actions" style="margin-top:10px"><button type="button" class="osd-btn primary" id="osd-send-link">Enviar enlace de acceso</button></div>' +
-        '<p class="osd-note" style="margin-top:8px">Requiere Email Auth habilitado en Supabase y la URL de este observatorio en Authentication → URL Configuration → Redirect URLs.</p>';
-      emailInput = $('osd-email');
-      $('osd-send-link').onclick = sendMagicLink;
-      emailInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sendMagicLink(); } });
+      renderEmailForm();
     }
+  }
+
+  function renderEmailForm() {
+    if (!accountBox) return;
+    var prefill = readStoredEmail();
+    accountBox.innerHTML =
+      '<p>Escribe el mismo correo con el que entras al SIGP. Tu mapa se cargará y se guardará con ese correo.</p>' +
+      '<label for="osd-email">Correo</label><input id="osd-email" type="email" autocomplete="email" placeholder="tu@correo.com" value="' + esc(prefill) + '" />' +
+      '<div class="osd-actions" style="margin-top:10px"><button type="button" class="osd-btn primary" id="osd-enter">Cargar mi mapa</button></div>';
+    var input = $('osd-email');
+    $('osd-enter').onclick = changeEmail;
+    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); changeEmail(); } });
+    setTimeout(function () { if (input) input.focus(); }, 50);
   }
 
   function openDialog() {
@@ -17765,7 +17771,6 @@ var ReportKit = (function () {
     renderDialog();
     if (typeof dialog.showModal === 'function') { if (!dialog.open) dialog.showModal(); }
     else dialog.setAttribute('open', '');
-    setTimeout(function () { if (emailInput && !uid) emailInput.focus(); }, 50);
   }
   function closeDialog() {
     if (!dialog) return;
@@ -17779,11 +17784,11 @@ var ReportKit = (function () {
     if (D) {
       D.schedulePersist = function () { if (!restoring) scheduleSave(); };
       D.persistToStorage = function () { if (!restoring) saveLocal('draw'); };
-      D.loadFromStorage = function () { /* la escena por usuario se restaura desde SceneManager */ };
+      D.loadFromStorage = function () { /* la escena por correo se restaura desde aquí */ };
     }
     if (M) {
       M.persistLayerState = function () { if (!restoring) scheduleSave(); };
-      M.restoreLayerState = function () { /* la escena por usuario se restaura desde SceneManager */ };
+      M.restoreLayerState = function () { /* la escena por correo se restaura desde aquí */ };
       M.map.on('moveend zoomend', function () { if (!restoring && !settling) scheduleSave(); });
     }
     var sat = $('btn-sat');
@@ -17795,11 +17800,21 @@ var ReportKit = (function () {
     window.addEventListener('pagehide', flushLocal);
     window.addEventListener('beforeunload', function () { flushLocal(); });
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushLocal(); });
-    window.addEventListener('online', function () { if (uid && dirty) scheduleCloud(); });
+    window.addEventListener('online', function () { if (activeEmail && dirty) scheduleCloud(); });
+    // Si el SIGP cambia el correo en otra pestaña, lo reflejamos al volver.
+    window.addEventListener('storage', function (e) {
+      if (e.key === EMAIL_KEY) {
+        var email = normEmail(e.newValue);
+        if (email && email !== activeEmail) {
+          activeEmail = email;
+          conflictRemote = null; lastCloudAt = null; dirty = false;
+          loadForEmail();
+        }
+      }
+    });
   }
 
   function migrateLegacy() {
-    // Solo migra al espacio local actual si aún no existe escena propia.
     if (readLocal()) return;
     var rawDraw = lsGet('obs_climatico_draw_v1');
     var rawLayers = lsGet('obs_climatico_layers_v1');
@@ -17809,8 +17824,7 @@ var ReportKit = (function () {
       var layers = rawLayers ? JSON.parse(rawLayers) : {};
       var M = core.MapCtrl, map = M.map, c = map.getCenter();
       var scene = {
-        version: 2,
-        updatedAt: nowISO(),
+        version: 2, updatedAt: nowISO(),
         map: { center: [c.lat, c.lng], zoom: map.getZoom(), base: M.satMode ? 'sat' : 'street' },
         drawings: { nextId: draw.nextId || 1, items: Array.isArray(draw.items) ? draw.items : [] },
         layers: layers,
@@ -17827,13 +17841,20 @@ var ReportKit = (function () {
   function start() {
     if (started || !core || !core.MapCtrl || !core.MapCtrl.map) return;
     started = true;
-    bootEmail = sigpEmail();
+    activeEmail = readStoredEmail();
     buildUI();
     hookCore();
     migrateLegacy();
     initClient();
-    loadForIdentity(false);
-    setState('local', 'Guardado local activo. Conecta la nube para sincronizar por usuario.');
+    loadForEmail();
+    clearInterval(autosaveInterval);
+    autosaveInterval = setInterval(function () {
+      if (activeEmail && client && dirty && !conflictRemote && !restoring && !settling) saveCloud(true);
+    }, AUTOSAVE_MS);
+    if (!activeEmail) {
+      // Sin correo: aviso no bloqueante. El diálogo se abre al pulsar Guardar.
+      setTimeout(function () { toast('Escribe tu correo en «Guardar» para que tu mapa se guarde en la nube.'); }, 1200);
+    }
     window.__obsScene = {
       capture: captureScene,
       restore: restoreScene,
@@ -17841,14 +17862,15 @@ var ReportKit = (function () {
       saveCloud: function () { return saveCloud(false); },
       open: openDialog,
       identity: identityKey,
-      state: function () { return { uid: uid, dirty: dirty, lastCloudAt: lastCloudAt, cloudState: cloudState }; }
+      email: function () { return activeEmail; },
+      setEmail: function (v) { activeEmail = normEmail(v); lsSet(EMAIL_KEY, activeEmail); loadForEmail(); },
+      state: function () { return { email: activeEmail, rowId: rowId, dirty: dirty, lastCloudAt: lastCloudAt, cloudState: cloudState, autosaveMs: AUTOSAVE_MS }; }
     };
   }
 
   function boot() {
     if (window.__obsCore && window.__obsCore.MapCtrl && window.__obsCore.MapCtrl.map) start();
     else window.addEventListener('obs:core-ready', start);
-    // Respaldo por si el evento ocurrió antes de conectar.
     var tries = 0;
     var t = setInterval(function () {
       tries++;
